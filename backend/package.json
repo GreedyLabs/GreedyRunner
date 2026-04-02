@@ -1,0 +1,28 @@
+{
+  "name": "greedy-runner-backend",
+  "version": "0.1.0",
+  "description": "GreedyRunner API - 달리기 최적 타이밍 안내 서비스",
+  "main": "dist/main.js",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsc",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.4.0",
+    "express": "^4.19.2",
+    "proj4": "^2.20.4",
+    "swagger-ui-express": "^5.0.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.14.0",
+    "@types/proj4": "^2.19.0",
+    "@types/swagger-ui-express": "^4.1.8",
+    "tsx": "^4.15.7",
+    "typescript": "^5.4.5"
+  }
+}
