@@ -1,5 +1,5 @@
 interface MainLayoutProps {
-  children: React.ReactNode
+  children: React.ReactNode;
 }
 
 export function MainLayout({ children }: MainLayoutProps) {
@@ -17,16 +17,12 @@ export function MainLayout({ children }: MainLayoutProps) {
       </header>
 
       {/* 메인 콘텐츠 */}
-      <main className="max-w-2xl mx-auto px-4 py-6 space-y-4">
-        {children}
-      </main>
+      <main className="max-w-2xl mx-auto px-4 py-6 space-y-4">{children}</main>
 
       {/* 푸터 */}
       <footer className="max-w-2xl mx-auto px-4 py-6 text-center">
-        <p className="text-xs text-gray-400">
-          대기질 데이터는 Mock 데이터입니다 · 실제 데이터는 준비 중
-        </p>
+        <p className="text-xs text-gray-400">Copyright 2026. GreedyLabs Co. All rights reserved.</p>
       </footer>
     </div>
-  )
+  );
 }
