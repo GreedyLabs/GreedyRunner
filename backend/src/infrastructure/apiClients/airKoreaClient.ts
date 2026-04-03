@@ -218,7 +218,8 @@ function buildAirQualityData(
   hourlyWeather: Map<number, Awaited<ReturnType<typeof getCurrentWeather>>> | null
 ): AirQualityData {
   const now = new Date()
-  const currentHour = now.getHours()
+  const kstNow = new Date(now.getTime() + (now.getTimezoneOffset() + 540) * 60_000)
+  const currentHour = kstNow.getHours()
 
   const latestItem = measurements[0]
   const currentMetrics = latestItem ? parseMeasurement(latestItem) : defaultMetrics()

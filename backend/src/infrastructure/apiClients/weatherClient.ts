@@ -55,25 +55,32 @@ function latLngToGrid(lat: number, lng: number): GridCoord {
 
 // ── 공통 유틸 ────────────────────────────────────────────────
 
+/** 시스템 타임존과 무관하게 KST(UTC+9) 기준 Date 반환 */
+function nowKST(): Date {
+  const now = new Date()
+  const utc = now.getTime() + now.getTimezoneOffset() * 60_000
+  return new Date(utc + 9 * 60 * 60_000)
+}
+
 /** 기상청 API 기준 시각 계산 — 초단기실황은 매시 정각 발표, 40분 후 제공 */
 function getUltraSrtBaseTime(): { baseDate: string; baseTime: string } {
-  const now = new Date()
+  const kst = nowKST()
   // 현재 분이 40분 미만이면 1시간 전 데이터 사용
-  if (now.getMinutes() < 40) {
-    now.setHours(now.getHours() - 1)
+  if (kst.getMinutes() < 40) {
+    kst.setHours(kst.getHours() - 1)
   }
   return {
-    baseDate: formatDate(now),
-    baseTime: `${String(now.getHours()).padStart(2, '0')}00`,
+    baseDate: formatDate(kst),
+    baseTime: `${String(kst.getHours()).padStart(2, '0')}00`,
   }
 }
 
 /** 단기예보 기준 시각 — 02, 05, 08, 11, 14, 17, 20, 23시 */
 function getVilageFcstBaseTime(): { baseDate: string; baseTime: string } {
-  const now = new Date()
+  const kst = nowKST()
   const baseHours = [2, 5, 8, 11, 14, 17, 20, 23]
-  const currentHour = now.getHours()
-  const currentMin = now.getMinutes()
+  const currentHour = kst.getHours()
+  const currentMin = kst.getMinutes()
 
   // 발표 후 약 10분 뒤 제공이므로 10분 미만이면 이전 발표 시각 사용
   let hour = baseHours[0]
@@ -84,12 +91,12 @@ function getVilageFcstBaseTime(): { baseDate: string; baseTime: string } {
   }
   // 현재 시간이 2시 이전이면 전날 23시 데이터
   if (currentHour < 2 || (currentHour === 2 && currentMin < 10)) {
-    now.setDate(now.getDate() - 1)
+    kst.setDate(kst.getDate() - 1)
     hour = 23
   }
 
   return {
-    baseDate: formatDate(now),
+    baseDate: formatDate(kst),
     baseTime: `${String(hour).padStart(2, '0')}00`,
   }
 }
@@ -201,7 +208,7 @@ export async function getCurrentWeather(lat: number, lng: number): Promise<Weath
 export async function getHourlyWeather(lat: number, lng: number): Promise<Map<number, WeatherMetrics>> {
   const { nx, ny } = latLngToGrid(lat, lng)
   const fcst = await fetchVilageFcst(nx, ny)
-  const today = formatDate(new Date())
+  const today = formatDate(nowKST())
 
   const result = new Map<number, WeatherMetrics>()
   for (const [key, cats] of fcst) {
