@@ -2,6 +2,33 @@ import { useState, useCallback, useEffect } from 'react'
 import type { Region } from '../../domain/entities/region.types'
 import { getRegionByCoords } from '../../infrastructure/api/airQualityApi'
 
+const CACHE_KEY = 'gr_location'
+const CACHE_TTL = 30 * 60 * 1000 // 30분
+
+interface CachedLocation {
+  region: Region
+  timestamp: number
+}
+
+function getCached(): Region | null {
+  try {
+    const raw = sessionStorage.getItem(CACHE_KEY)
+    if (!raw) return null
+    const cached: CachedLocation = JSON.parse(raw)
+    if (Date.now() - cached.timestamp > CACHE_TTL) {
+      sessionStorage.removeItem(CACHE_KEY)
+      return null
+    }
+    return cached.region
+  } catch {
+    return null
+  }
+}
+
+function setCache(region: Region) {
+  sessionStorage.setItem(CACHE_KEY, JSON.stringify({ region, timestamp: Date.now() }))
+}
+
 interface UseLocationState {
   region: Region | null
   isLocating: boolean
@@ -13,13 +40,24 @@ interface UseLocationReturn extends UseLocationState {
 }
 
 export function useLocation(): UseLocationReturn {
-  const [state, setState] = useState<UseLocationState>({
-    region: null,
-    isLocating: false,
-    error: null,
+  const [state, setState] = useState<UseLocationState>(() => {
+    const cached = getCached()
+    return {
+      region: cached,
+      isLocating: false,
+      error: null,
+    }
   })
 
-  const locateMe = useCallback(() => {
+  const locateMe = useCallback((skipCache = false) => {
+    if (!skipCache) {
+      const cached = getCached()
+      if (cached) {
+        setState({ region: cached, isLocating: false, error: null })
+        return
+      }
+    }
+
     if (!navigator.geolocation) {
       setState(prev => ({ ...prev, error: '이 브라우저는 위치 조회를 지원하지 않습니다.' }))
       return
@@ -30,8 +68,8 @@ export function useLocation(): UseLocationReturn {
     navigator.geolocation.getCurrentPosition(
       async ({ coords }) => {
         try {
-          // lat/lng → 백엔드에서 TM 변환 후 가장 가까운 측정소 반환
           const region = await getRegionByCoords(coords.latitude, coords.longitude)
+          setCache(region)
           setState({ region, isLocating: false, error: null })
         } catch {
           setState(prev => ({
@@ -52,10 +90,16 @@ export function useLocation(): UseLocationReturn {
     )
   }, [])
 
-  // 마운트 시 자동으로 위치 감지
+  // 마운트 시 자동으로 위치 감지 (캐시 우선)
   useEffect(() => {
-    locateMe()
+    locateMe(false)
   }, [locateMe])
 
-  return { ...state, locateMe }
+  // "현재 위치" 버튼용 — 캐시 무시하고 새로 조회
+  const locateMeFresh = useCallback(() => {
+    sessionStorage.removeItem(CACHE_KEY)
+    locateMe(true)
+  }, [locateMe])
+
+  return { ...state, locateMe: locateMeFresh }
 }

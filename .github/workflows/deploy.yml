@@ -28,9 +28,9 @@ jobs:
             git clone ${{ github.server_url }}/${{ github.repository }}.git "$TARGET_DIR"
           fi
 
-      - name: Write backend .env
+      - name: Write .env
         run: |
-          echo "${{ secrets.BACKEND_ENV }}" > "${{ env.SERVICE_BASE }}/${{ env.SERVICE_NAME }}/backend/.env"
+          echo "${{ secrets.ENV_FILE }}" > "${{ env.SERVICE_BASE }}/${{ env.SERVICE_NAME }}/.env"
 
       - name: Deploy with Docker Compose
         run: |
