@@ -30,25 +30,44 @@ export function getRunningIndex(
 }
 
 function calculateScore(m: AirQualityMetrics, w?: WeatherInfo): number {
+  const pm25P = getPm25Penalty(m.pm25)
+  const pm10P = getPm10Penalty(m.pm10)
+  const o3P   = getO3Penalty(m.o3)
+
   if (!w) {
-    const penalty =
-      getPm25Penalty(m.pm25) * 0.5 +
-      getPm10Penalty(m.pm10) * 0.3 +
-      getO3Penalty(m.o3)     * 0.2
-    return Math.max(0, Math.min(100, Math.round(100 - penalty)))
+    const basePenalty = pm25P * 0.5 + pm10P * 0.3 + o3P * 0.2
+    const totalPenalty = applyCompoundPenalty(basePenalty, [pm25P, pm10P, o3P])
+    return Math.max(0, Math.min(100, Math.round(100 - totalPenalty)))
   }
 
-  const airPenalty =
-    getPm25Penalty(m.pm25) * 0.35 +
-    getPm10Penalty(m.pm10) * 0.20 +
-    getO3Penalty(m.o3)     * 0.15
+  const tempP   = temperaturePenalty(w.temperature)
+  const humP    = humidityPenalty(w.humidity)
+  const precipP = precipitationPenalty(w.precipitation)
 
-  const wxPenalty =
-    temperaturePenalty(w.temperature) * 0.15 +
-    humidityPenalty(w.humidity)       * 0.10 +
-    precipitationPenalty(w.precipitation) * 0.05
+  const basePenalty =
+    pm25P * 0.35 + pm10P * 0.20 + o3P * 0.15 +
+    tempP * 0.15 + humP  * 0.10 + precipP * 0.05
 
-  return Math.max(0, Math.min(100, Math.round(100 - airPenalty - wxPenalty)))
+  const totalPenalty = applyCompoundPenalty(
+    basePenalty,
+    [pm25P, pm10P, o3P, tempP, humP, precipP]
+  )
+
+  return Math.max(0, Math.min(100, Math.round(100 - totalPenalty)))
+}
+
+/**
+ * 복합 악화 보정: 개별 페널티 > 25인 항목이 2개 이상이면 추가 감점.
+ * 여러 항목이 동시에 나쁠수록 감점 폭이 커집니다.
+ */
+function applyCompoundPenalty(basePenalty: number, rawPenalties: number[]): number {
+  const significant = rawPenalties.filter(p => p > 25)
+  if (significant.length < 2) return basePenalty
+
+  const avgSeverity = significant.reduce((a, b) => a + b, 0) / (significant.length * 100)
+  const compound = significant.length * avgSeverity * 20
+
+  return basePenalty + compound
 }
 
 // ── 대기질 페널티 ────────────────────────────────────────────
