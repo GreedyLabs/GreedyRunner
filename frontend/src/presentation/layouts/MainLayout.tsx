@@ -14,7 +14,7 @@ export function MainLayout({ children }: MainLayoutProps) {
 
   useEffect(() => {
     fetch('/api/v1/stats/visitors')
-      .then(res => res.json())
+      .then((res) => res.json())
       .then((data: VisitorStats) => setStats(data))
       .catch(() => {});
   }, []);
@@ -33,18 +33,28 @@ export function MainLayout({ children }: MainLayoutProps) {
       </header>
 
       {/* 메인 콘텐츠 */}
-      <main className="max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-3 sm:space-y-4">{children}</main>
+      <main className="max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-3 sm:space-y-4">
+        {children}
+      </main>
 
       {/* 푸터 */}
       <footer className="max-w-2xl mx-auto px-3 sm:px-4 py-6 text-center space-y-2">
         {stats && (
           <div className="flex items-center justify-center gap-3 text-[10px] sm:text-xs text-gray-400">
-            <span>오늘 <span className="font-semibold text-gray-500">{stats.today.toLocaleString()}</span>명</span>
+            <span>
+              Today{' '}
+              <span className="font-semibold text-gray-500">{stats.today.toLocaleString()}</span>명
+            </span>
             <span className="text-gray-300">|</span>
-            <span>누적 <span className="font-semibold text-gray-500">{stats.total.toLocaleString()}</span>명</span>
+            <span>
+              Total{' '}
+              <span className="font-semibold text-gray-500">{stats.total.toLocaleString()}</span>명
+            </span>
           </div>
         )}
-        <p className="text-[10px] sm:text-xs text-gray-400">Copyright 2026. GreedyLabs Co. All rights reserved.</p>
+        <p className="text-[10px] sm:text-xs text-gray-400">
+          Copyright 2026. GreedyLabs Co. All rights reserved.
+        </p>
       </footer>
     </div>
   );
