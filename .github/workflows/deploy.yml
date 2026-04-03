@@ -1,0 +1,33 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: greedylabs
+    steps:
+      - name: Clone or update repository
+        run: |
+          TARGET_DIR="/home/greedylabs/service/GreedyRunner"
+          if [ -d "$TARGET_DIR/.git" ]; then
+            git -C "$TARGET_DIR" pull
+          else
+            mkdir -p /home/greedylabs/service
+            git clone ${{ github.server_url }}/${{ github.repository }}.git "$TARGET_DIR"
+          fi
+
+      - name: Deploy with Docker Compose
+        run: |
+          cd /home/greedylabs/service/GreedyRunner
+          docker compose pull --ignore-pull-failures || true
+          docker compose up --build -d
+          docker image prune -f
+          docker builder prune -f --keep-storage 2gb
