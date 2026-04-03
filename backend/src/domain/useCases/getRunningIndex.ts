@@ -62,16 +62,17 @@ function calculateScore(m: AirQualityMetrics, w?: WeatherInfo): number {
 
   const tempP   = temperaturePenalty(w.temperature)
   const humP    = humidityPenalty(w.humidity)
+  const windP   = windSpeedPenalty(w.windSpeed)
   const precipP = precipitationPenalty(w.precipitation)
 
   // 대기질 70% + 기상 30%
   const basePenalty =
     pm25P * 0.35 + pm10P * 0.20 + o3P * 0.15 +
-    tempP * 0.15 + humP  * 0.10 + precipP * 0.05
+    tempP * 0.12 + humP  * 0.08 + windP * 0.05 + precipP * 0.05
 
   const totalPenalty = applyCompoundPenalty(
     basePenalty,
-    [pm25P, pm10P, o3P, tempP, humP, precipP]
+    [pm25P, pm10P, o3P, tempP, humP, windP, precipP]
   )
 
   return Math.max(0, Math.min(100, Math.round(100 - totalPenalty)))
@@ -132,6 +133,14 @@ function humidityPenalty(hum: number): number {
   if (hum > 60 && hum <= 80) return ((hum - 60) / 20) * 30
   if (hum > 80) return 30 + ((Math.min(hum, 100) - 80) / 20) * 70
   return 30 // 30% 미만
+}
+
+/** 풍속: 3m/s 이하 쾌적, 7m/s 이상 불편, 10m/s 이상 위험 */
+function windSpeedPenalty(ws: number): number {
+  if (ws <= 3) return 0
+  if (ws <= 7) return ((ws - 3) / 4) * 20
+  if (ws <= 10) return 20 + ((ws - 7) / 3) * 30
+  return 50 + ((Math.min(ws, 15) - 10) / 5) * 50
 }
 
 /** 비/눈이면 큰 감점 */

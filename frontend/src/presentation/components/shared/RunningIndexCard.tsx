@@ -137,10 +137,11 @@ export function RunningIndexCard({
             <AirChip label="오존" value={Math.round(airQuality.o3 * 1000)} unit="ppb" threshold={[30, 60, 90]} />
             {weather && (
               <>
-                <WeatherChip label="기온" value={`${weather.temperature}°C`} icon={weather.temperature >= 28 ? '🌡️' : weather.temperature <= 5 ? '🥶' : '🌤️'} />
-                <WeatherChip label="습도" value={`${weather.humidity}%`} icon="💧" />
+                <WeatherChip label="기온" value={`${weather.temperature}°C`} icon={weather.temperature >= 28 ? '🌡️' : weather.temperature <= 5 ? '🥶' : '🌤️'} dot={weather.temperature >= 12 && weather.temperature <= 22 ? 'bg-emerald-300' : weather.temperature >= 5 && weather.temperature <= 28 ? 'bg-amber-300' : 'bg-red-300'} />
+                <WeatherChip label="습도" value={`${weather.humidity}%`} icon="💧" dot={weather.humidity >= 40 && weather.humidity <= 60 ? 'bg-emerald-300' : weather.humidity >= 30 && weather.humidity <= 80 ? 'bg-amber-300' : 'bg-red-300'} />
+                <WeatherChip label="풍속" value={`${weather.windSpeed}m/s`} icon={weather.windSpeed >= 7 ? '💨' : '🍃'} dot={weather.windSpeed <= 3 ? 'bg-emerald-300' : weather.windSpeed <= 7 ? 'bg-amber-300' : 'bg-red-300'} />
                 {weather.precipitation !== 'none' && (
-                  <WeatherChip label="강수" value={PRECIP_LABEL[weather.precipitation]} icon={PRECIP_ICON[weather.precipitation]} />
+                  <WeatherChip label="강수" value={PRECIP_LABEL[weather.precipitation]} icon={PRECIP_ICON[weather.precipitation]} dot="bg-red-300" />
                 )}
               </>
             )}
@@ -184,13 +185,17 @@ function AirChip({ label, value, unit, threshold }: AirChipProps) {
 interface WeatherChipProps {
   label: string
   value: string
+  dot: string
   icon: string
 }
 
-function WeatherChip({ label, value, icon }: WeatherChipProps) {
+function WeatherChip({ label, value, dot, icon }: WeatherChipProps) {
   return (
     <div className="rounded-xl px-2 sm:px-3 py-1.5 text-center bg-black/20 backdrop-blur-sm min-w-0">
-      <p className="text-white/90 text-[10px] sm:text-xs font-medium">{label}</p>
+      <p className="text-white/90 text-[10px] sm:text-xs font-medium flex items-center justify-center gap-1">
+        <span className={cn('inline-block w-1.5 h-1.5 rounded-full', dot)} />
+        {label}
+      </p>
       <p className="text-white font-bold text-xs sm:text-sm">
         {icon} {value}
       </p>
@@ -204,6 +209,7 @@ const PRECIP_LABEL: Record<string, string> = {
   sleet: '진눈깨비',
 }
 
+// 향후 강수 아이콘 표시에 사용
 const PRECIP_ICON: Record<string, string> = {
   rain: '🌧️',
   snow: '❄️',

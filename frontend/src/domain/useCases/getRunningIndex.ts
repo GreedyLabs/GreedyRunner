@@ -4,7 +4,7 @@ import type { AirQualityMetrics, RunningIndex, RunningStatus, WeatherInfo } from
  * 대기질 + 기상 정보로 러닝 지수(0~100)를 계산합니다.
  * 점수가 높을수록 달리기 좋은 환경입니다.
  *
- * 가중치: 대기질 70% (PM2.5 35%, PM10 20%, O₃ 15%) + 기상 30% (기온 15%, 습도 10%, 강수 5%)
+ * 가중치: 대기질 70% (PM2.5 35%, PM10 20%, O₃ 15%) + 기상 30% (기온 12%, 습도 8%, 풍속 5%, 강수 5%)
  * weather가 없으면 대기질만으로 100점 만점 계산 (기존 호환)
  */
 export function getRunningIndex(
@@ -42,15 +42,16 @@ function calculateScore(m: AirQualityMetrics, w?: WeatherInfo): number {
 
   const tempP   = temperaturePenalty(w.temperature)
   const humP    = humidityPenalty(w.humidity)
+  const windP   = windSpeedPenalty(w.windSpeed)
   const precipP = precipitationPenalty(w.precipitation)
 
   const basePenalty =
     pm25P * 0.35 + pm10P * 0.20 + o3P * 0.15 +
-    tempP * 0.15 + humP  * 0.10 + precipP * 0.05
+    tempP * 0.12 + humP  * 0.08 + windP * 0.05 + precipP * 0.05
 
   const totalPenalty = applyCompoundPenalty(
     basePenalty,
-    [pm25P, pm10P, o3P, tempP, humP, precipP]
+    [pm25P, pm10P, o3P, tempP, humP, windP, precipP]
   )
 
   return Math.max(0, Math.min(100, Math.round(100 - totalPenalty)))
@@ -109,6 +110,13 @@ function humidityPenalty(hum: number): number {
   if (hum > 60 && hum <= 80) return ((hum - 60) / 20) * 30
   if (hum > 80) return 30 + ((Math.min(hum, 100) - 80) / 20) * 70
   return 30
+}
+
+function windSpeedPenalty(ws: number): number {
+  if (ws <= 3) return 0
+  if (ws <= 7) return ((ws - 3) / 4) * 20
+  if (ws <= 10) return 20 + ((ws - 7) / 3) * 30
+  return 50 + ((Math.min(ws, 15) - 10) / 5) * 50
 }
 
 function precipitationPenalty(precip: string): number {
