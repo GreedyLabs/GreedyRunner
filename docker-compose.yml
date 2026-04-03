@@ -1,6 +1,10 @@
 services:
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        VITE_UMAMI_URL: ${VITE_UMAMI_URL}
+        VITE_UMAMI_WEBSITE_ID: ${VITE_UMAMI_WEBSITE_ID}
     ports:
       - '8742:80'
     depends_on:
@@ -20,7 +24,6 @@ services:
     environment:
       DATABASE_URL: postgresql://umami:umami@umami-db:5432/umami
       APP_SECRET: ${UMAMI_APP_SECRET}
-      BASE_PATH: /umami
     depends_on:
       umami-db:
         condition: service_healthy
