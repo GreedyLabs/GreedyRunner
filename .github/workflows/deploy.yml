@@ -10,23 +10,31 @@ concurrency:
   group: deploy-production
   cancel-in-progress: false
 
+env:
+  SERVICE_BASE: /home/greedylabs/service
+  SERVICE_NAME: ${{ github.event.repository.name }}
+
 jobs:
   deploy:
     runs-on: greedylabs
     steps:
       - name: Clone or update repository
         run: |
-          TARGET_DIR="/home/greedylabs/service/GreedyRunner"
+          TARGET_DIR="${{ env.SERVICE_BASE }}/${{ env.SERVICE_NAME }}"
           if [ -d "$TARGET_DIR/.git" ]; then
             git -C "$TARGET_DIR" pull
           else
-            mkdir -p /home/greedylabs/service
+            mkdir -p "${{ env.SERVICE_BASE }}"
             git clone ${{ github.server_url }}/${{ github.repository }}.git "$TARGET_DIR"
           fi
 
+      - name: Write backend .env
+        run: |
+          echo "${{ secrets.BACKEND_ENV }}" > "${{ env.SERVICE_BASE }}/${{ env.SERVICE_NAME }}/backend/.env"
+
       - name: Deploy with Docker Compose
         run: |
-          cd /home/greedylabs/service/GreedyRunner
+          cd "${{ env.SERVICE_BASE }}/${{ env.SERVICE_NAME }}"
           docker compose pull --ignore-pull-failures || true
           docker compose up --build -d
           docker image prune -f
