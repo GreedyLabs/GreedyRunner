@@ -2,7 +2,7 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "8742:80"
+      - '8742:80'
     depends_on:
       - backend
 
@@ -13,19 +13,19 @@ services:
     environment:
       - PORT=8000
     expose:
-      - "8000"
+      - '8000'
 
   umami:
     image: ghcr.io/umami-software/umami:postgresql-latest
     environment:
       DATABASE_URL: postgresql://umami:umami@umami-db:5432/umami
       APP_SECRET: ${UMAMI_APP_SECRET}
-      BASE_PATH: ""
+      BASE_PATH: /umami
     depends_on:
       umami-db:
         condition: service_healthy
     ports:
-      - "3000:3000"
+      - '3000:3000'
     restart: unless-stopped
 
   umami-db:
@@ -37,7 +37,7 @@ services:
     volumes:
       - umami-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U umami"]
+      test: ['CMD-SHELL', 'pg_isready -U umami']
       interval: 5s
       timeout: 5s
       retries: 5
