@@ -43,12 +43,12 @@ export function MainLayout({ children }: MainLayoutProps) {
           <div className="flex items-center justify-center gap-3 text-[10px] sm:text-xs text-gray-400">
             <span>
               Today{' '}
-              <span className="font-semibold text-gray-500">{stats.today.toLocaleString()}</span>명
+              <span className="font-semibold text-gray-500">{stats.today.toLocaleString()}</span>
             </span>
             <span className="text-gray-300">|</span>
             <span>
               Total{' '}
-              <span className="font-semibold text-gray-500">{stats.total.toLocaleString()}</span>명
+              <span className="font-semibold text-gray-500">{stats.total.toLocaleString()}</span>
             </span>
           </div>
         )}
