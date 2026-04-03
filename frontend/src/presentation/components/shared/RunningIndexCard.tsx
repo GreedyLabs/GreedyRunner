@@ -98,14 +98,14 @@ export function RunningIndexCard({
           </div>
 
           {/* 핵심 질문 + 답변 */}
-          <p className="text-white/80 text-sm mb-1">{questionLabel}</p>
-          <div className="flex items-center gap-3 mb-6">
-            <span className="text-4xl">{config.icon}</span>
-            <h2 className="text-3xl sm:text-4xl font-bold">{config.answer}</h2>
+          <p className="text-white/80 text-xs sm:text-sm mb-1">{questionLabel}</p>
+          <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
+            <span className="text-3xl sm:text-4xl shrink-0">{config.icon}</span>
+            <h2 className="text-2xl sm:text-4xl font-bold leading-tight">{config.answer}</h2>
           </div>
 
           {/* 러닝 지수 + 메시지 */}
-          <p className="text-white/80 text-sm mb-5">{runningIndex.message}</p>
+          <p className="text-white/80 text-xs sm:text-sm mb-4 sm:mb-5 leading-relaxed">{runningIndex.message}</p>
 
           {/* 점수 게이지 */}
           <div className="mb-2">
@@ -131,10 +131,10 @@ export function RunningIndexCard({
           )}
 
           {/* 대기질 + 기상 요약 칩 */}
-          <div className="flex flex-wrap gap-2 mt-5">
-            <AirChip label="PM2.5" value={airQuality.pm25} unit="μg/m³" threshold={[15, 35, 75]} />
-            <AirChip label="PM10" value={airQuality.pm10} unit="μg/m³" threshold={[30, 80, 150]} />
-            <AirChip label="O₃" value={Math.round(airQuality.o3 * 1000)} unit="ppb" threshold={[30, 60, 90]} />
+          <div className="grid grid-cols-3 sm:flex sm:flex-wrap gap-1.5 sm:gap-2 mt-4 sm:mt-5">
+            <AirChip label="초미세" value={airQuality.pm25} unit="μg/m³" threshold={[15, 35, 75]} />
+            <AirChip label="미세" value={airQuality.pm10} unit="μg/m³" threshold={[30, 80, 150]} />
+            <AirChip label="오존" value={Math.round(airQuality.o3 * 1000)} unit="ppb" threshold={[30, 60, 90]} />
             {weather && (
               <>
                 <WeatherChip label="기온" value={`${weather.temperature}°C`} icon={weather.temperature >= 28 ? '🌡️' : weather.temperature <= 5 ? '🥶' : '🌤️'} />
@@ -159,20 +159,23 @@ interface AirChipProps {
 }
 
 function AirChip({ label, value, unit, threshold }: AirChipProps) {
-  const chipColor =
+  const dot =
     value <= threshold[0]
-      ? 'bg-white/30'
+      ? 'bg-emerald-300'
       : value <= threshold[1]
-      ? 'bg-amber-300/40'
+      ? 'bg-amber-300'
       : value <= threshold[2]
-      ? 'bg-orange-400/40'
-      : 'bg-red-500/40'
+      ? 'bg-orange-300'
+      : 'bg-red-300'
 
   return (
-    <div className={cn('rounded-xl px-3 py-1.5 text-center', chipColor)}>
-      <p className="text-white/70 text-xs">{label}</p>
-      <p className="text-white font-bold text-sm">
-        {value} <span className="font-normal text-white/60 text-xs">{unit}</span>
+    <div className="rounded-xl px-2 sm:px-3 py-1.5 text-center min-w-0 bg-black/20 backdrop-blur-sm">
+      <p className="text-white/90 text-[10px] sm:text-xs font-medium flex items-center justify-center gap-1">
+        <span className={cn('inline-block w-1.5 h-1.5 rounded-full', dot)} />
+        {label}
+      </p>
+      <p className="text-white font-bold text-xs sm:text-sm">
+        {value} <span className="font-normal text-white/60 text-[10px] sm:text-xs">{unit}</span>
       </p>
     </div>
   )
@@ -186,9 +189,9 @@ interface WeatherChipProps {
 
 function WeatherChip({ label, value, icon }: WeatherChipProps) {
   return (
-    <div className="rounded-xl px-3 py-1.5 text-center bg-white/20">
-      <p className="text-white/70 text-xs">{label}</p>
-      <p className="text-white font-bold text-sm">
+    <div className="rounded-xl px-2 sm:px-3 py-1.5 text-center bg-black/20 backdrop-blur-sm min-w-0">
+      <p className="text-white/90 text-[10px] sm:text-xs font-medium">{label}</p>
+      <p className="text-white font-bold text-xs sm:text-sm">
         {icon} {value}
       </p>
     </div>

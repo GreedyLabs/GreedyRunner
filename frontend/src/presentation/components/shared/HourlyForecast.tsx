@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { Card } from '../ui/Card'
 import type { HourlyForecast as HourlyForecastType } from '../../../domain/entities/airQuality.types'
 import { cn } from '../../../lib/cn'
@@ -28,6 +29,17 @@ const STATUS_TEXT_COLOR = {
 export function HourlyForecast({ forecast, bestHours, selectedHour, onHourSelect }: HourlyForecastProps) {
   const now = new Date()
   const currentHour = now.getHours()
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const currentBarRef = useRef<HTMLButtonElement>(null)
+
+  // 데이터 로드 시 현재 시간 바를 가운데로 스크롤
+  useEffect(() => {
+    if (!scrollRef.current || !currentBarRef.current) return
+    const container = scrollRef.current
+    const bar = currentBarRef.current
+    const scrollLeft = bar.offsetLeft - container.clientWidth / 2 + bar.clientWidth / 2
+    container.scrollTo({ left: scrollLeft, behavior: 'smooth' })
+  }, [forecast])
 
   const bestHourLabel = bestHours.length > 0
     ? bestHours.map(h => `${h}시`).join(', ')
@@ -52,7 +64,7 @@ export function HourlyForecast({ forecast, bestHours, selectedHour, onHourSelect
       )}
 
       {/* 시간별 바 차트 */}
-      <div className="overflow-x-auto -mx-1 px-1">
+      <div ref={scrollRef} className="overflow-x-auto -mx-1 px-1">
         <div className="flex items-end gap-1 min-w-max pb-1" style={{ minWidth: '600px' }}>
           {forecast.map((hourData) => {
             const { hour, runningIndex } = hourData
@@ -64,6 +76,7 @@ export function HourlyForecast({ forecast, bestHours, selectedHour, onHourSelect
             return (
               <button
                 key={hour}
+                ref={isNow ? currentBarRef : undefined}
                 type="button"
                 className="flex flex-col items-center gap-1 w-6 cursor-pointer"
                 onClick={() => onHourSelect(hourData)}
@@ -110,12 +123,12 @@ export function HourlyForecast({ forecast, bestHours, selectedHour, onHourSelect
       </div>
 
       {/* 범례 */}
-      <div className="flex flex-wrap gap-3 mt-4 pt-3 border-t border-gray-100">
+      <div className="flex justify-between sm:justify-start sm:gap-3 mt-4 pt-3 border-t border-gray-100">
         {(Object.entries(STATUS_BAR_COLOR) as [keyof typeof STATUS_BAR_COLOR, string][]).map(
           ([status, colorClass]) => (
-            <div key={status} className="flex items-center gap-1.5">
-              <div className={cn('w-3 h-3 rounded-sm', colorClass)} />
-              <span className={cn('text-xs', STATUS_TEXT_COLOR[status])}>
+            <div key={status} className="flex items-center gap-1">
+              <div className={cn('w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm', colorClass)} />
+              <span className={cn('text-[11px] sm:text-xs', STATUS_TEXT_COLOR[status])}>
                 {STATUS_LEGEND[status]}
               </span>
             </div>

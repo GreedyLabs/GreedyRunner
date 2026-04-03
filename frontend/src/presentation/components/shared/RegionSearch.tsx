@@ -51,11 +51,11 @@ export function RegionSearch({
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-5">
       {/* 현재 선택된 지역 표시 */}
       {selectedRegion && (
-        <div className="flex items-center gap-2 mb-3 text-sm text-gray-500">
+        <div className="flex items-center gap-2 mb-3 text-xs sm:text-sm text-gray-500">
           <span>📍</span>
           <span className="font-medium text-gray-700">{selectedRegion.name}</span>
-          <span className="text-gray-300">|</span>
-          <span>지역을 변경하려면 아래에서 검색하세요</span>
+          <span className="hidden sm:inline text-gray-300">|</span>
+          <span className="hidden sm:inline">지역을 변경하려면 아래에서 검색하세요</span>
         </div>
       )}
 

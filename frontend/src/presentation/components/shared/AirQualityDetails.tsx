@@ -155,10 +155,10 @@ function MetricItem({ metric, threshold, isSelected, onClick }: MetricItemProps)
           : 'border-transparent bg-gray-50 hover:border-gray-200'
       )}
     >
-      <p className="text-xs text-gray-500 mb-1 truncate">{metric.label}</p>
-      <div className="flex items-end gap-1.5 mb-2">
-        <span className="text-xl font-bold text-gray-800">{metric.value}</span>
-        <span className="text-xs text-gray-400 mb-0.5">{metric.unit}</span>
+      <p className="text-[11px] sm:text-xs text-gray-500 mb-1 truncate">{metric.shortLabel}</p>
+      <div className="flex items-end gap-1 sm:gap-1.5 mb-2">
+        <span className="text-lg sm:text-xl font-bold text-gray-800">{metric.value}</span>
+        <span className="text-[10px] sm:text-xs text-gray-400 mb-0.5">{metric.unit}</span>
       </div>
       <div className="flex items-center justify-between">
         <span
@@ -249,42 +249,42 @@ function WeatherSection({ weather }: { weather: WeatherInfo }) {
   return (
     <div className="mt-4 pt-4 border-t border-gray-100">
       <h4 className="font-bold text-gray-800 text-sm mb-3">기상 정보</h4>
-      <div className="grid grid-cols-3 gap-3">
-        <div className="bg-gray-50 rounded-xl p-3">
-          <p className="text-xs text-gray-500 mb-1">기온</p>
-          <div className="flex items-end gap-1 mb-2">
-            <span className="text-xl font-bold text-gray-800">{weather.temperature}</span>
-            <span className="text-xs text-gray-400 mb-0.5">°C</span>
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        <div className="bg-gray-50 rounded-xl p-2.5 sm:p-3">
+          <p className="text-[11px] sm:text-xs text-gray-500 mb-1">기온</p>
+          <div className="flex items-end gap-0.5 sm:gap-1 mb-1.5 sm:mb-2">
+            <span className="text-lg sm:text-xl font-bold text-gray-800">{weather.temperature}</span>
+            <span className="text-[10px] sm:text-xs text-gray-400 mb-0.5">°C</span>
           </div>
-          <span className={cn('inline-block text-xs font-semibold px-2 py-0.5 rounded-full', tempStatus.color)}>
+          <span className={cn('inline-block text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2 py-0.5 rounded-full', tempStatus.color)}>
             {tempStatus.label}
           </span>
         </div>
-        <div className="bg-gray-50 rounded-xl p-3">
-          <p className="text-xs text-gray-500 mb-1">습도</p>
-          <div className="flex items-end gap-1 mb-2">
-            <span className="text-xl font-bold text-gray-800">{weather.humidity}</span>
-            <span className="text-xs text-gray-400 mb-0.5">%</span>
+        <div className="bg-gray-50 rounded-xl p-2.5 sm:p-3">
+          <p className="text-[11px] sm:text-xs text-gray-500 mb-1">습도</p>
+          <div className="flex items-end gap-0.5 sm:gap-1 mb-1.5 sm:mb-2">
+            <span className="text-lg sm:text-xl font-bold text-gray-800">{weather.humidity}</span>
+            <span className="text-[10px] sm:text-xs text-gray-400 mb-0.5">%</span>
           </div>
-          <span className={cn('inline-block text-xs font-semibold px-2 py-0.5 rounded-full', humStatus.color)}>
+          <span className={cn('inline-block text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2 py-0.5 rounded-full', humStatus.color)}>
             {humStatus.label}
           </span>
         </div>
-        <div className="bg-gray-50 rounded-xl p-3">
-          <p className="text-xs text-gray-500 mb-1">풍속 / 강수</p>
-          <div className="flex items-end gap-1 mb-2">
-            <span className="text-xl font-bold text-gray-800">{weather.windSpeed}</span>
-            <span className="text-xs text-gray-400 mb-0.5">m/s</span>
+        <div className="bg-gray-50 rounded-xl p-2.5 sm:p-3">
+          <p className="text-[11px] sm:text-xs text-gray-500 mb-1">풍속</p>
+          <div className="flex items-end gap-0.5 sm:gap-1 mb-1.5 sm:mb-2">
+            <span className="text-lg sm:text-xl font-bold text-gray-800">{weather.windSpeed}</span>
+            <span className="text-[10px] sm:text-xs text-gray-400 mb-0.5">m/s</span>
           </div>
           <span className={cn(
-            'inline-block text-xs font-semibold px-2 py-0.5 rounded-full',
+            'inline-block text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2 py-0.5 rounded-full',
             weather.precipitation === 'none' ? 'text-emerald-600 bg-emerald-50' : 'text-red-600 bg-red-50'
           )}>
-            {PRECIP_LABELS[weather.precipitation]}
+            {weather.precipitation === 'none' ? '맑음' : PRECIP_LABELS[weather.precipitation]}
           </span>
         </div>
       </div>
-      <p className="text-xs text-gray-400 mt-2">기온 12~22°C, 습도 40~60%가 러닝에 최적입니다</p>
+      <p className="text-[10px] sm:text-xs text-gray-400 mt-2">기온 12~22°C, 습도 40~60%가 러닝에 최적입니다</p>
     </div>
   )
 }
