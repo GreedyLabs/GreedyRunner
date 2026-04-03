@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import type { Region } from '../../domain/entities/region.types'
 import { getRegionByCoords } from '../../infrastructure/api/airQualityApi'
 
@@ -51,6 +51,11 @@ export function useLocation(): UseLocationReturn {
       { timeout: 10000 }
     )
   }, [])
+
+  // 마운트 시 자동으로 위치 감지
+  useEffect(() => {
+    locateMe()
+  }, [locateMe])
 
   return { ...state, locateMe }
 }
