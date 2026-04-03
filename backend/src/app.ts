@@ -9,8 +9,12 @@ const app = express()
 app.use(
   cors({
     origin: (origin, callback) => {
-      // 로컬 개발 환경(localhost 전 포트) 및 출처 없는 요청(모바일, curl 등) 허용
-      if (!origin || /^http:\/\/localhost(:\d+)?$/.test(origin)) {
+      // 출처 없는 요청(프록시, curl 등), localhost, ngrok 허용
+      if (
+        !origin ||
+        /^https?:\/\/localhost(:\d+)?$/.test(origin) ||
+        /\.ngrok(-free)?\.dev$/.test(origin)
+      ) {
         callback(null, true)
       } else {
         callback(new Error(`CORS: 허용되지 않은 origin: ${origin}`))
