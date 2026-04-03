@@ -79,6 +79,19 @@ export function HomePage() {
       {/* 데이터 표시 */}
       {data && !isLoading && displayRunningIndex && displayAirQuality && (
         <>
+          {data.stationFallback && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 sm:p-4 flex items-start gap-2">
+              <span className="text-amber-500 text-sm mt-0.5">⚠️</span>
+              <div className="text-xs sm:text-sm">
+                <p className="text-amber-700 font-medium">
+                  {data.stationFallback.originalStation} 측정소 데이터 비정상
+                </p>
+                <p className="text-amber-600 mt-0.5">
+                  근처 <span className="font-semibold">{data.stationFallback.fallbackStation}</span> 측정소 데이터로 대체하여 표시합니다.
+                </p>
+              </div>
+            </div>
+          )}
           <RunningIndexCard
             runningIndex={displayRunningIndex}
             airQuality={displayAirQuality}

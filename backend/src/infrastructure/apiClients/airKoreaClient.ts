@@ -7,7 +7,7 @@
  */
 
 import proj4 from 'proj4'
-import type { AirQualityData, AirQualityMetrics, WeatherInfo } from '../../domain/entities/airQuality'
+import type { AirQualityData, AirQualityMetrics, StationFallback, WeatherInfo } from '../../domain/entities/airQuality'
 import type { Region } from '../../domain/entities/region'
 import { getRunningIndex } from '../../domain/useCases/getRunningIndex'
 import { getCurrentWeather, getHourlyWeather } from './weatherClient'
@@ -165,7 +165,7 @@ export async function getAirQuality(
   lat?: number,
   lng?: number
 ): Promise<AirQualityData> {
-  const { stationName, measurements } = await resolveStationWithFallback(regionId)
+  const { stationName, measurements, fallback } = await resolveStationWithFallback(regionId)
 
   // 기상 병렬 호출
   const hasWeatherKey = !!process.env.KMA_API_KEY
@@ -180,7 +180,7 @@ export async function getAirQuality(
       : Promise.resolve(null),
   ])
 
-  return buildAirQualityData(stationName, measurements, currentWeather, hourlyWeather)
+  return buildAirQualityData(stationName, measurements, currentWeather, hourlyWeather, fallback)
 }
 
 // ── 내부 유틸 ──────────────────────────────────────────────
@@ -200,14 +200,25 @@ function isMeasurementFaulty(measurements: StationMeasurement[]): boolean {
  */
 async function resolveStationWithFallback(
   regionId: string
-): Promise<{ stationName: string; measurements: StationMeasurement[] }> {
+): Promise<{ stationName: string; measurements: StationMeasurement[]; fallback?: StationFallback }> {
   const stationNames = await resolveStationCandidates(regionId)
 
   for (let i = 0; i < stationNames.length; i++) {
     const name = stationNames[i]
     const measurements = await getStationMeasurements(name)
     if (!isMeasurementFaulty(measurements)) {
-      if (i > 0) console.log(`[air] ${stationNames[0]} → ${name} 측정소로 폴백 완료`)
+      if (i > 0) {
+        console.log(`[air] ${stationNames[0]} → ${name} 측정소로 폴백 완료`)
+        return {
+          stationName: name,
+          measurements,
+          fallback: {
+            originalStation: stationNames[0],
+            fallbackStation: name,
+            reason: `${stationNames[0]} 측정소 데이터 비정상 (점검 중 추정)`,
+          },
+        }
+      }
       return { stationName: name, measurements }
     }
     console.warn(`[air] ${name} 측정소 데이터 비정상 (PM2.5·PM10 = 0), 다음 측정소 시도`)
@@ -251,7 +262,8 @@ function buildAirQualityData(
   stationName: string,
   measurements: StationMeasurement[],
   currentWeather: Awaited<ReturnType<typeof getCurrentWeather>> | null,
-  hourlyWeather: Map<number, Awaited<ReturnType<typeof getCurrentWeather>>> | null
+  hourlyWeather: Map<number, Awaited<ReturnType<typeof getCurrentWeather>>> | null,
+  fallback?: StationFallback
 ): AirQualityData {
   const now = new Date()
   const kstNow = new Date(now.getTime() + (now.getTimezoneOffset() + 540) * 60_000)
@@ -298,8 +310,9 @@ function buildAirQualityData(
     .sort((a, b) => a - b)
 
   return {
-    regionName: `${stationName} 측정소`,
+    regionName: fallback ? `${fallback.fallbackStation} 측정소` : `${stationName} 측정소`,
     updatedAt: now,
+    stationFallback: fallback,
     current: {
       airQuality: currentMetrics,
       weather: currentWx,

@@ -30,9 +30,16 @@ export interface HourlyForecast {
   runningIndex: RunningIndex
 }
 
+export interface StationFallback {
+  originalStation: string
+  fallbackStation: string
+  reason: string
+}
+
 export interface AirQualityData {
   regionName: string
   updatedAt: Date
+  stationFallback?: StationFallback
   current: {
     airQuality: AirQualityMetrics
     weather?: WeatherInfo
