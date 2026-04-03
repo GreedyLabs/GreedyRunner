@@ -21,3 +21,9 @@ export const CoordsQuerySchema = z.object({
 export const RegionIdParamSchema = z.object({
   regionId: z.string().min(1),
 })
+
+/** /:regionId?lat=37.5&lng=127.0 — 좌표는 선택적 (기상 데이터 병합용) */
+export const RegionIdQuerySchema = z.object({
+  lat: z.coerce.number().min(-90).max(90),
+  lng: z.coerce.number().min(-180).max(180),
+})

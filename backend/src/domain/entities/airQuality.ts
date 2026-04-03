@@ -16,9 +16,17 @@ export interface RunningIndex {
   canRun: boolean
 }
 
+export interface WeatherInfo {
+  temperature: number          // 기온 (°C)
+  humidity: number             // 습도 (%)
+  windSpeed: number            // 풍속 (m/s)
+  precipitation: 'none' | 'rain' | 'snow' | 'sleet'
+}
+
 export interface HourlyForecast {
   hour: number
   airQuality: AirQualityMetrics
+  weather?: WeatherInfo
   runningIndex: RunningIndex
 }
 
@@ -27,6 +35,7 @@ export interface AirQualityData {
   updatedAt: Date
   current: {
     airQuality: AirQualityMetrics
+    weather?: WeatherInfo
     runningIndex: RunningIndex
   }
   hourlyForecast: HourlyForecast[]

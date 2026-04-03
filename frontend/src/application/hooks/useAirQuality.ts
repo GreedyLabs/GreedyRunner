@@ -9,7 +9,7 @@ interface UseAirQualityState {
 }
 
 interface UseAirQualityReturn extends UseAirQualityState {
-  fetchByRegion: (regionId: string) => Promise<void>
+  fetchByRegion: (regionId: string, lat?: number, lng?: number) => Promise<void>
   reset: () => void
 }
 
@@ -20,10 +20,10 @@ export function useAirQuality(): UseAirQualityReturn {
     error: null,
   })
 
-  const fetchByRegion = useCallback(async (regionId: string) => {
+  const fetchByRegion = useCallback(async (regionId: string, lat?: number, lng?: number) => {
     setState(prev => ({ ...prev, isLoading: true, error: null }))
     try {
-      const data = await getAirQualityByRegion(regionId)
+      const data = await getAirQualityByRegion(regionId, lat, lng)
       setState({ data, isLoading: false, error: null })
     } catch {
       setState(prev => ({

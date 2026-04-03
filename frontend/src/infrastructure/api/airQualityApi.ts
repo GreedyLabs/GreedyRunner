@@ -35,11 +35,17 @@ export async function getRegionByCoords(lat: number, lng: number): Promise<Regio
   )
 }
 
-/** regionId 기반 대기질 + 달리기 지수 조회 */
-export async function getAirQualityByRegion(regionId: string): Promise<AirQualityData> {
-  const data = await apiFetch<AirQualityData & { updatedAt: string }>(
-    `/api/v1/air-quality/${encodeURIComponent(regionId)}`
-  )
-  // JSON 역직렬화 시 Date → string 변환되므로 복원
+/** regionId 기반 대기질 + 기상 + 달리기 지수 조회 */
+export async function getAirQualityByRegion(
+  regionId: string,
+  lat?: number,
+  lng?: number
+): Promise<AirQualityData> {
+  let path = `/api/v1/air-quality/${encodeURIComponent(regionId)}`
+  // 좌표가 있으면 기상 데이터도 함께 요청
+  if (lat != null && lng != null) {
+    path += `?lat=${lat}&lng=${lng}`
+  }
+  const data = await apiFetch<AirQualityData & { updatedAt: string }>(path)
   return { ...data, updatedAt: new Date(data.updatedAt) }
 }

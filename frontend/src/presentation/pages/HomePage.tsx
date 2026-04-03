@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { RegionSearch } from '../components/shared/RegionSearch'
 import { RunningIndexCard } from '../components/shared/RunningIndexCard'
 import { HourlyForecast } from '../components/shared/HourlyForecast'
@@ -7,23 +7,43 @@ import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { useAirQuality } from '../../application/hooks/useAirQuality'
 import { useLocation } from '../../application/hooks/useLocation'
 import type { Region } from '../../domain/entities/region.types'
+import type { HourlyForecast as HourlyForecastType } from '../../domain/entities/airQuality.types'
 
 export function HomePage() {
   const { data, isLoading, error, fetchByRegion } = useAirQuality()
   const { region: locatedRegion, isLocating, error: locationError, locateMe } = useLocation()
+  const [selectedHourData, setSelectedHourData] = useState<HourlyForecastType | null>(null)
 
-  // 위치 기반 지역이 확인되면 자동 조회
+  // 위치 기반 지역이 확인되면 자동 조회 (좌표 포함)
   useEffect(() => {
     if (locatedRegion) {
-      fetchByRegion(locatedRegion.id)
+      fetchByRegion(locatedRegion.id, locatedRegion.lat, locatedRegion.lng)
     }
   }, [locatedRegion, fetchByRegion])
 
+  // 새 데이터 로드 시 선택 초기화
+  useEffect(() => {
+    setSelectedHourData(null)
+  }, [data])
+
   function handleRegionSelect(region: Region) {
-    fetchByRegion(region.id)
+    fetchByRegion(region.id, region.lat, region.lng)
+  }
+
+  function handleHourSelect(hourData: HourlyForecastType) {
+    setSelectedHourData(hourData)
+  }
+
+  function handleResetToCurrentData() {
+    setSelectedHourData(null)
   }
 
   const selectedRegion = locatedRegion ?? null
+
+  // 선택된 시간의 데이터 또는 현재 데이터
+  const displayRunningIndex = selectedHourData?.runningIndex ?? data?.current.runningIndex
+  const displayAirQuality = selectedHourData?.airQuality ?? data?.current.airQuality
+  const displayWeather = selectedHourData?.weather ?? data?.current.weather
 
   return (
     <>
@@ -57,19 +77,24 @@ export function HomePage() {
       )}
 
       {/* 데이터 표시 */}
-      {data && !isLoading && (
+      {data && !isLoading && displayRunningIndex && displayAirQuality && (
         <>
           <RunningIndexCard
-            runningIndex={data.current.runningIndex}
-            airQuality={data.current.airQuality}
+            runningIndex={displayRunningIndex}
+            airQuality={displayAirQuality}
+            weather={displayWeather}
             regionName={data.regionName}
             updatedAt={data.updatedAt}
+            selectedHour={selectedHourData?.hour ?? null}
+            onResetHour={selectedHourData ? handleResetToCurrentData : undefined}
           />
           <HourlyForecast
             forecast={data.hourlyForecast}
             bestHours={data.bestRunningHours}
+            selectedHour={selectedHourData?.hour ?? null}
+            onHourSelect={handleHourSelect}
           />
-          <AirQualityDetails metrics={data.current.airQuality} />
+          <AirQualityDetails metrics={displayAirQuality} weather={displayWeather} />
         </>
       )}
     </>

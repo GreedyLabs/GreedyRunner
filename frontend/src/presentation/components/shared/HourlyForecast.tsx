@@ -5,6 +5,8 @@ import { cn } from '../../../lib/cn'
 interface HourlyForecastProps {
   forecast: HourlyForecastType[]
   bestHours: number[]
+  selectedHour: number | null
+  onHourSelect: (hourData: HourlyForecastType) => void
 }
 
 const STATUS_BAR_COLOR = {
@@ -23,7 +25,7 @@ const STATUS_TEXT_COLOR = {
   worst:   'text-red-600',
 }
 
-export function HourlyForecast({ forecast, bestHours }: HourlyForecastProps) {
+export function HourlyForecast({ forecast, bestHours, selectedHour, onHourSelect }: HourlyForecastProps) {
   const now = new Date()
   const currentHour = now.getHours()
 
@@ -52,20 +54,30 @@ export function HourlyForecast({ forecast, bestHours }: HourlyForecastProps) {
       {/* 시간별 바 차트 */}
       <div className="overflow-x-auto -mx-1 px-1">
         <div className="flex items-end gap-1 min-w-max pb-1" style={{ minWidth: '600px' }}>
-          {forecast.map(({ hour, runningIndex }) => {
+          {forecast.map((hourData) => {
+            const { hour, runningIndex } = hourData
             const isNow = hour === currentHour
             const isBest = bestHours.includes(hour)
+            const isSelected = selectedHour === hour
             const barHeight = Math.max(8, runningIndex.score * 0.6)
 
             return (
-              <div key={hour} className="flex flex-col items-center gap-1 w-6">
-                {/* 점수 라벨 (현재 시간만) */}
-                {isNow && (
-                  <span className="text-xs font-bold text-blue-600">{runningIndex.score}</span>
+              <button
+                key={hour}
+                type="button"
+                className="flex flex-col items-center gap-1 w-6 cursor-pointer"
+                onClick={() => onHourSelect(hourData)}
+              >
+                {/* 점수 라벨 (현재 시간 또는 선택된 시간) */}
+                {(isNow || isSelected) && (
+                  <span className={cn(
+                    'text-xs font-bold',
+                    isSelected ? 'text-violet-600' : 'text-blue-600'
+                  )}>{runningIndex.score}</span>
                 )}
 
                 {/* 추천 별 표시 */}
-                {isBest && !isNow && (
+                {isBest && !isNow && !isSelected && (
                   <span className="text-xs">⭐</span>
                 )}
 
@@ -74,8 +86,9 @@ export function HourlyForecast({ forecast, bestHours }: HourlyForecastProps) {
                   className={cn(
                     'w-full rounded-t-sm transition-all',
                     STATUS_BAR_COLOR[runningIndex.status],
-                    isNow && 'ring-2 ring-blue-500 ring-offset-1',
-                    hour < currentHour && 'opacity-40'
+                    isSelected && 'ring-2 ring-violet-500 ring-offset-1',
+                    isNow && !isSelected && 'ring-2 ring-blue-500 ring-offset-1',
+                    hour < currentHour && !isSelected && 'opacity-40'
                   )}
                   style={{ height: `${barHeight}px` }}
                   title={`${hour}시 - 러닝 지수 ${runningIndex.score}`}
@@ -85,12 +98,12 @@ export function HourlyForecast({ forecast, bestHours }: HourlyForecastProps) {
                 <span
                   className={cn(
                     'text-xs leading-none',
-                    isNow ? 'text-blue-600 font-bold' : 'text-gray-400'
+                    isSelected ? 'text-violet-600 font-bold' : isNow ? 'text-blue-600 font-bold' : 'text-gray-400'
                   )}
                 >
-                  {hour % 6 === 0 ? `${hour}` : isNow ? '▲' : ''}
+                  {isSelected ? `${hour}` : hour % 6 === 0 ? `${hour}` : isNow ? '▲' : ''}
                 </span>
-              </div>
+              </button>
             )
           })}
         </div>

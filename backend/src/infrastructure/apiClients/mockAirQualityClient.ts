@@ -57,7 +57,7 @@ export async function getRegionByCoords(lat: number, lng: number): Promise<Regio
   )
 }
 
-export async function getAirQuality(regionId: string): Promise<AirQualityData> {
+export async function getAirQuality(regionId: string, _lat?: number, _lng?: number): Promise<AirQualityData> {
   const region = MOCK_REGIONS.find(r => r.id === regionId) ?? MOCK_REGIONS[0]
   const now = new Date()
   const currentHour = now.getHours()

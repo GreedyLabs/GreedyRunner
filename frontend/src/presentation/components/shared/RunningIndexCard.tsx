@@ -1,11 +1,14 @@
 import { cn } from '../../../lib/cn'
-import type { RunningIndex, AirQualityMetrics } from '../../../domain/entities/airQuality.types'
+import type { RunningIndex, AirQualityMetrics, WeatherInfo } from '../../../domain/entities/airQuality.types'
 
 interface RunningIndexCardProps {
   runningIndex: RunningIndex
   airQuality: AirQualityMetrics
+  weather?: WeatherInfo
   regionName: string
   updatedAt: Date
+  selectedHour: number | null
+  onResetHour?: () => void
 }
 
 const STATUS_CONFIG = {
@@ -49,8 +52,11 @@ const STATUS_CONFIG = {
 export function RunningIndexCard({
   runningIndex,
   airQuality,
+  weather,
   regionName,
   updatedAt,
+  selectedHour,
+  onResetHour,
 }: RunningIndexCardProps) {
   const config = STATUS_CONFIG[runningIndex.status]
 
@@ -59,13 +65,22 @@ export function RunningIndexCard({
     minute: '2-digit',
   })
 
+  const isHourSelected = selectedHour !== null
+  const timeLabel = isHourSelected ? `${selectedHour}시 예보` : `${formattedTime} 기준`
+  const questionLabel = isHourSelected ? `${selectedHour}시에 달려도 되나요?` : '지금 여기서 달려도 되나요?'
+
   return (
     <div className="animate-slide-up">
       {/* 메인 카드: 지금 달려도 되나요? */}
       <div
+        role={isHourSelected ? 'button' : undefined}
+        tabIndex={isHourSelected ? 0 : undefined}
+        onClick={onResetHour}
+        onKeyDown={onResetHour ? (e) => { if (e.key === 'Enter' || e.key === ' ') onResetHour() } : undefined}
         className={cn(
           'relative overflow-hidden rounded-3xl bg-gradient-to-br p-6 sm:p-8 text-white shadow-lg',
-          config.bg
+          config.bg,
+          isHourSelected && 'cursor-pointer ring-2 ring-violet-300 ring-offset-2'
         )}
       >
         {/* 배경 장식 원 */}
@@ -79,11 +94,11 @@ export function RunningIndexCard({
               <span className="text-white/80 text-sm">📍</span>
               <span className="text-white/90 text-sm font-medium">{regionName}</span>
             </div>
-            <span className="text-white/60 text-xs">{formattedTime} 기준</span>
+            <span className="text-white/60 text-xs">{timeLabel}</span>
           </div>
 
           {/* 핵심 질문 + 답변 */}
-          <p className="text-white/80 text-sm mb-1">지금 여기서 달려도 되나요?</p>
+          <p className="text-white/80 text-sm mb-1">{questionLabel}</p>
           <div className="flex items-center gap-3 mb-6">
             <span className="text-4xl">{config.icon}</span>
             <h2 className="text-3xl sm:text-4xl font-bold">{config.answer}</h2>
@@ -110,11 +125,25 @@ export function RunningIndexCard({
             </div>
           </div>
 
-          {/* 대기질 요약 칩 */}
+          {/* 시간 선택 안내 */}
+          {isHourSelected && (
+            <p className="text-white/60 text-xs mt-1">카드를 탭하면 현재 시간 기준으로 돌아갑니다</p>
+          )}
+
+          {/* 대기질 + 기상 요약 칩 */}
           <div className="flex flex-wrap gap-2 mt-5">
             <AirChip label="PM2.5" value={airQuality.pm25} unit="μg/m³" threshold={[15, 35, 75]} />
             <AirChip label="PM10" value={airQuality.pm10} unit="μg/m³" threshold={[30, 80, 150]} />
             <AirChip label="O₃" value={Math.round(airQuality.o3 * 1000)} unit="ppb" threshold={[30, 60, 90]} />
+            {weather && (
+              <>
+                <WeatherChip label="기온" value={`${weather.temperature}°C`} icon={weather.temperature >= 28 ? '🌡️' : weather.temperature <= 5 ? '🥶' : '🌤️'} />
+                <WeatherChip label="습도" value={`${weather.humidity}%`} icon="💧" />
+                {weather.precipitation !== 'none' && (
+                  <WeatherChip label="강수" value={PRECIP_LABEL[weather.precipitation]} icon={PRECIP_ICON[weather.precipitation]} />
+                )}
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -147,4 +176,33 @@ function AirChip({ label, value, unit, threshold }: AirChipProps) {
       </p>
     </div>
   )
+}
+
+interface WeatherChipProps {
+  label: string
+  value: string
+  icon: string
+}
+
+function WeatherChip({ label, value, icon }: WeatherChipProps) {
+  return (
+    <div className="rounded-xl px-3 py-1.5 text-center bg-white/20">
+      <p className="text-white/70 text-xs">{label}</p>
+      <p className="text-white font-bold text-sm">
+        {icon} {value}
+      </p>
+    </div>
+  )
+}
+
+const PRECIP_LABEL: Record<string, string> = {
+  rain: '비',
+  snow: '눈',
+  sleet: '진눈깨비',
+}
+
+const PRECIP_ICON: Record<string, string> = {
+  rain: '🌧️',
+  snow: '❄️',
+  sleet: '🌨️',
 }

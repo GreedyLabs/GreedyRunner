@@ -21,14 +21,15 @@ export function RegionSearch({
   selectedRegion,
 }: RegionSearchProps) {
   const inputId = useId()
-  const { query, results, isSearching, setQuery, clearResults, closeDropdown } = useRegionSearch()
+  const { query, results, isSearching, setQuery, closeDropdown } = useRegionSearch()
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   function handleSelect(region: Region) {
     onRegionSelect(region)
-    clearResults()
+    setQuery(region.name)   // 입력창에 선택된 지역명 표시
+    closeDropdown()
     setIsDropdownOpen(false)
     inputRef.current?.blur()
   }

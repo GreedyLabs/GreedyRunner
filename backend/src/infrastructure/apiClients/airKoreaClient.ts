@@ -1,5 +1,5 @@
 /**
- * 에어코리아 Open API 클라이언트
+ * 에어코리아 Open API 클라이언트 + 기상청 날씨 통합
  *
  * regionId 포맷:
  *   - `tm:{tmX}:{tmY}`      — 지역명 검색 결과 (TM 좌표 → 가장 가까운 측정소 조회)
@@ -7,9 +7,10 @@
  */
 
 import proj4 from 'proj4'
-import type { AirQualityData, AirQualityMetrics } from '../../domain/entities/airQuality'
+import type { AirQualityData, AirQualityMetrics, WeatherInfo } from '../../domain/entities/airQuality'
 import type { Region } from '../../domain/entities/region'
 import { getRunningIndex } from '../../domain/useCases/getRunningIndex'
+import { getCurrentWeather, getHourlyWeather } from './weatherClient'
 
 const API_KEY = process.env.AIR_KOREA_API_KEY ?? ''
 const MSRS_BASE = 'https://apis.data.go.kr/B552584/MsrstnInfoInqireSvc'
@@ -47,7 +48,7 @@ interface AirKoreaResponse<T> {
 interface NearbyStation {
   stationName: string
   addr: string
-  tm: number // 거리(km)
+  tm: number
 }
 
 async function getNearbyStations(tmX: number, tmY: number): Promise<NearbyStation[]> {
@@ -70,7 +71,7 @@ interface TmCoordResult {
   umdName: string
   sggName: string
   sidoName: string
-  tmX: string | number  // API가 문자열로 반환
+  tmX: string | number
   tmY: string | number
 }
 
@@ -93,7 +94,7 @@ async function getTMCoords(query: string): Promise<TmCoordResult[]> {
 // ── 대기오염 정보 API ─────────────────────────────────────────
 
 interface StationMeasurement {
-  dataTime: string   // "2024-04-02 10:00"
+  dataTime: string
   pm10Value: string
   pm25Value: string
   o3Value: string
@@ -121,10 +122,6 @@ async function getStationMeasurements(stationName: string): Promise<StationMeasu
 
 // ── 공개 함수 ────────────────────────────────────────────────
 
-/**
- * 읍면동명 검색 → Region 목록 (id = `tm:{tmX}:{tmY}`)
- * 선택된 Region의 id로 getAirQuality()를 호출하면 가장 가까운 측정소를 찾아 데이터 반환
- */
 export async function searchRegions(query: string): Promise<Region[]> {
   const results = await getTMCoords(query.trim())
   return results.slice(0, 6).map((r) => {
@@ -142,9 +139,6 @@ export async function searchRegions(query: string): Promise<Region[]> {
   })
 }
 
-/**
- * WGS84 좌표 → 가장 가까운 측정소 Region (id = `station:{stationName}`)
- */
 export async function getRegionByCoords(lat: number, lng: number): Promise<Region> {
   const { tmX, tmY } = latLngToTM(lat, lng)
   const stations = await getNearbyStations(tmX, tmY)
@@ -163,14 +157,31 @@ export async function getRegionByCoords(lat: number, lng: number): Promise<Regio
 }
 
 /**
- * regionId → 대기질 데이터 + 달리기 지수
- *   - `station:{name}` : 측정소명으로 바로 조회
- *   - `tm:{X}:{Y}`     : TM 좌표로 가장 가까운 측정소 조회 후 데이터 반환
+ * regionId + 좌표 → 대기질 + 기상 데이터 + 달리기 지수
+ * lat/lng가 있으면 기상청 API도 호출하여 통합
  */
-export async function getAirQuality(regionId: string): Promise<AirQualityData> {
+export async function getAirQuality(
+  regionId: string,
+  lat?: number,
+  lng?: number
+): Promise<AirQualityData> {
   const stationName = await resolveStationName(regionId)
-  const measurements = await getStationMeasurements(stationName)
-  return buildAirQualityData(stationName, measurements)
+
+  // 대기질 + 기상 병렬 호출
+  const hasWeatherKey = !!process.env.KMA_API_KEY
+  const hasCoords = lat != null && lng != null
+
+  const [measurements, currentWeather, hourlyWeather] = await Promise.all([
+    getStationMeasurements(stationName),
+    (hasWeatherKey && hasCoords)
+      ? getCurrentWeather(lat, lng).catch((err) => { console.warn('[weather]', err); return null })
+      : Promise.resolve(null),
+    (hasWeatherKey && hasCoords)
+      ? getHourlyWeather(lat, lng).catch((err) => { console.warn('[weather-hourly]', err); return null })
+      : Promise.resolve(null),
+  ])
+
+  return buildAirQualityData(stationName, measurements, currentWeather, hourlyWeather)
 }
 
 // ── 내부 유틸 ──────────────────────────────────────────────
@@ -191,17 +202,28 @@ async function resolveStationName(regionId: string): Promise<string> {
   throw new Error(`알 수 없는 regionId 형식: ${regionId}`)
 }
 
+function toWeatherInfo(w: Awaited<ReturnType<typeof getCurrentWeather>>): WeatherInfo {
+  return {
+    temperature: w.temperature,
+    humidity: w.humidity,
+    windSpeed: w.windSpeed,
+    precipitation: w.precipitation,
+  }
+}
+
 function buildAirQualityData(
   stationName: string,
-  measurements: StationMeasurement[]
+  measurements: StationMeasurement[],
+  currentWeather: Awaited<ReturnType<typeof getCurrentWeather>> | null,
+  hourlyWeather: Map<number, Awaited<ReturnType<typeof getCurrentWeather>>> | null
 ): AirQualityData {
   const now = new Date()
   const currentHour = now.getHours()
 
-  // API 응답은 최신순(내림차순) → 최신 측정값 = 현재 상태
   const latestItem = measurements[0]
   const currentMetrics = latestItem ? parseMeasurement(latestItem) : defaultMetrics()
-  const currentRunningIndex = getRunningIndex(currentMetrics)
+  const currentWx = currentWeather ? toWeatherInfo(currentWeather) : undefined
+  const currentRunningIndex = getRunningIndex(currentMetrics, currentWx)
 
   // 실측 데이터를 시간별로 매핑
   const hourlyMap = new Map<number, AirQualityMetrics>()
@@ -214,16 +236,21 @@ function buildAirQualityData(
   const hourlyForecast = Array.from({ length: 24 }, (_, hour) => {
     let metrics: AirQualityMetrics
     if (hourlyMap.has(hour)) {
-      // 실측값 사용
       metrics = hourlyMap.get(hour)!
     } else if (hour <= currentHour) {
-      // 과거이지만 데이터 없음 → 현재값으로 대체
       metrics = currentMetrics
     } else {
-      // 미래 시간 → 출퇴근 패턴 기반 예측
       metrics = predictMetrics(currentMetrics, hour)
     }
-    return { hour, airQuality: metrics, runningIndex: getRunningIndex(metrics) }
+
+    const wx = hourlyWeather?.get(hour)
+    const weatherInfo = wx ? toWeatherInfo(wx) : undefined
+    return {
+      hour,
+      airQuality: metrics,
+      weather: weatherInfo,
+      runningIndex: getRunningIndex(metrics, weatherInfo),
+    }
   })
 
   const bestRunningHours = [...hourlyForecast]
@@ -238,6 +265,7 @@ function buildAirQualityData(
     updatedAt: now,
     current: {
       airQuality: currentMetrics,
+      weather: currentWx,
       runningIndex: currentRunningIndex,
     },
     hourlyForecast,
@@ -255,7 +283,6 @@ function parseMeasurement(item: StationMeasurement): AirQualityMetrics {
   }
 }
 
-/** "-" 또는 빈 값은 0으로 처리 */
 function parseNum(v: string): number {
   const n = parseFloat(v)
   return isNaN(n) ? 0 : n
@@ -266,7 +293,6 @@ function roundTo(v: number, decimals: number): number {
 }
 
 function parseHour(dataTime: string): number {
-  // "2024-04-02 10:00" → 10
   return parseInt(dataTime.split(' ')[1]?.split(':')[0] ?? '0', 10)
 }
 

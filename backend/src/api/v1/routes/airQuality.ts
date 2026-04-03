@@ -1,9 +1,8 @@
 import { Router, type Request, type Response } from 'express'
-import { SearchQuerySchema, CoordsQuerySchema, RegionIdParamSchema } from '../../../schemas/airQuality'
+import { SearchQuerySchema, CoordsQuerySchema, RegionIdParamSchema, RegionIdQuerySchema } from '../../../schemas/airQuality'
 import * as realClient from '../../../infrastructure/apiClients/airKoreaClient'
 import * as mockClient from '../../../infrastructure/apiClients/mockAirQualityClient'
 
-// API 키가 설정된 경우 에어코리아 실제 API 사용, 없으면 Mock 폴백
 const client = process.env.AIR_KOREA_API_KEY ? realClient : mockClient
 
 if (!process.env.AIR_KOREA_API_KEY) {
@@ -12,7 +11,7 @@ if (!process.env.AIR_KOREA_API_KEY) {
 
 export const airQualityRouter = Router()
 
-/** GET /api/v1/air-quality/search?q=강남 — 지역 검색 */
+/** GET /api/v1/air-quality/search?q=강남 */
 airQualityRouter.get('/search', async (req: Request, res: Response) => {
   const parsed = SearchQuerySchema.safeParse(req.query)
   if (!parsed.success) {
@@ -28,7 +27,7 @@ airQualityRouter.get('/search', async (req: Request, res: Response) => {
   }
 })
 
-/** GET /api/v1/air-quality/by-coords?lat=37.5&lng=127.0 — 좌표 기반 가장 가까운 측정소 조회 */
+/** GET /api/v1/air-quality/by-coords?lat=37.5&lng=127.0 */
 airQualityRouter.get('/by-coords', async (req: Request, res: Response) => {
   const parsed = CoordsQuerySchema.safeParse(req.query)
   if (!parsed.success) {
@@ -44,15 +43,20 @@ airQualityRouter.get('/by-coords', async (req: Request, res: Response) => {
   }
 })
 
-/** GET /api/v1/air-quality/:regionId — 지역 ID 기반 대기질 조회 */
+/** GET /api/v1/air-quality/:regionId?lat=37.5&lng=127.0 */
 airQualityRouter.get('/:regionId', async (req: Request, res: Response) => {
   const parsed = RegionIdParamSchema.safeParse(req.params)
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.flatten().fieldErrors })
     return
   }
+  // 좌표는 선택적 — 있으면 기상 데이터도 함께 조회
+  const coordsParsed = RegionIdQuerySchema.safeParse(req.query)
+  const lat = coordsParsed.success ? coordsParsed.data.lat : undefined
+  const lng = coordsParsed.success ? coordsParsed.data.lng : undefined
+
   try {
-    const data = await client.getAirQuality(parsed.data.regionId)
+    const data = await client.getAirQuality(parsed.data.regionId, lat, lng)
     res.json(data)
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)

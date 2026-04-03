@@ -1,11 +1,20 @@
 export type RunningStatus = 'great' | 'good' | 'caution' | 'bad' | 'worst'
 
+export type PrecipitationType = 'none' | 'rain' | 'snow' | 'sleet'
+
 export interface AirQualityMetrics {
   pm25: number   // μg/m³
   pm10: number   // μg/m³
   o3: number     // ppm
   no2: number    // ppm
   co: number     // ppm
+}
+
+export interface WeatherInfo {
+  temperature: number          // 기온 (°C)
+  humidity: number             // 습도 (%)
+  windSpeed: number            // 풍속 (m/s)
+  precipitation: PrecipitationType
 }
 
 export interface RunningIndex {
@@ -20,6 +29,7 @@ export interface HourlyForecast {
   hour: number           // 0–23
   runningIndex: RunningIndex
   airQuality: AirQualityMetrics
+  weather?: WeatherInfo
 }
 
 export interface AirQualityData {
@@ -27,6 +37,7 @@ export interface AirQualityData {
   updatedAt: Date
   current: {
     airQuality: AirQualityMetrics
+    weather?: WeatherInfo
     runningIndex: RunningIndex
   }
   hourlyForecast: HourlyForecast[]
