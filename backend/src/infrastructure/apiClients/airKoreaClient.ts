@@ -165,14 +165,13 @@ export async function getAirQuality(
   lat?: number,
   lng?: number
 ): Promise<AirQualityData> {
-  const stationName = await resolveStationName(regionId)
+  const { stationName, measurements } = await resolveStationWithFallback(regionId)
 
-  // 대기질 + 기상 병렬 호출
+  // 기상 병렬 호출
   const hasWeatherKey = !!process.env.KMA_API_KEY
   const hasCoords = lat != null && lng != null
 
-  const [measurements, currentWeather, hourlyWeather] = await Promise.all([
-    getStationMeasurements(stationName),
+  const [currentWeather, hourlyWeather] = await Promise.all([
     (hasWeatherKey && hasCoords)
       ? getCurrentWeather(lat, lng).catch((err) => { console.warn('[weather]', err); return null })
       : Promise.resolve(null),
@@ -186,9 +185,46 @@ export async function getAirQuality(
 
 // ── 내부 유틸 ──────────────────────────────────────────────
 
-async function resolveStationName(regionId: string): Promise<string> {
+/** 측정 데이터가 비정상(PM2.5·PM10 모두 0 또는 빈 값)인지 판별 */
+function isMeasurementFaulty(measurements: StationMeasurement[]): boolean {
+  if (measurements.length === 0) return true
+  const latest = measurements[0]
+  const pm25 = parseNum(latest.pm25Value)
+  const pm10 = parseNum(latest.pm10Value)
+  return pm25 === 0 && pm10 === 0
+}
+
+/**
+ * 측정소를 결정하고 측정 데이터를 반환.
+ * 1순위 측정소의 데이터가 비정상이면 근처 다른 측정소로 폴백 (최대 3곳).
+ */
+async function resolveStationWithFallback(
+  regionId: string
+): Promise<{ stationName: string; measurements: StationMeasurement[] }> {
+  const stationNames = await resolveStationCandidates(regionId)
+
+  for (let i = 0; i < stationNames.length; i++) {
+    const name = stationNames[i]
+    const measurements = await getStationMeasurements(name)
+    if (!isMeasurementFaulty(measurements)) {
+      if (i > 0) console.log(`[air] ${stationNames[0]} → ${name} 측정소로 폴백 완료`)
+      return { stationName: name, measurements }
+    }
+    console.warn(`[air] ${name} 측정소 데이터 비정상 (PM2.5·PM10 = 0), 다음 측정소 시도`)
+  }
+
+  // 모든 측정소가 비정상이면 1순위 데이터라도 반환
+  const fallbackMeasurements = await getStationMeasurements(stationNames[0])
+  return { stationName: stationNames[0], measurements: fallbackMeasurements }
+}
+
+/** regionId에서 측정소 후보 목록을 반환 (최대 3곳) */
+async function resolveStationCandidates(regionId: string): Promise<string[]> {
   if (regionId.startsWith('station:')) {
-    return regionId.slice('station:'.length)
+    const primary = regionId.slice('station:'.length)
+    // station: 형태는 좌표 기반이므로 근처 측정소 목록을 가져올 수 없음
+    // 1곳만 반환
+    return [primary]
   }
   if (regionId.startsWith('tm:')) {
     const parts = regionId.split(':')
@@ -197,7 +233,7 @@ async function resolveStationName(regionId: string): Promise<string> {
     if (isNaN(tmX) || isNaN(tmY)) throw new Error(`잘못된 TM 좌표: ${regionId}`)
     const stations = await getNearbyStations(tmX, tmY)
     if (stations.length === 0) throw new Error('측정소를 찾을 수 없습니다.')
-    return stations[0].stationName
+    return stations.slice(0, 3).map(s => s.stationName)
   }
   throw new Error(`알 수 없는 regionId 형식: ${regionId}`)
 }
