@@ -22,7 +22,7 @@ export function MainLayout({ children }: MainLayoutProps) {
   return (
     <div className="min-h-screen bg-slate-100">
       {/* 헤더 */}
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-10 shadow-sm">
+      <header className="bg-white border-b border-gray-100 sticky top-0 z-50 shadow-sm">
         <div className="max-w-2xl mx-auto px-3 sm:px-4 h-12 sm:h-14 flex items-center justify-between">
           <div className="flex items-center gap-1.5 sm:gap-2">
             <span className="text-lg sm:text-xl">🏃</span>
