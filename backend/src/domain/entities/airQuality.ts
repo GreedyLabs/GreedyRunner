@@ -25,6 +25,7 @@ export interface WeatherInfo {
 
 export interface HourlyForecast {
   hour: number
+  isNextDay?: boolean
   airQuality: AirQualityMetrics
   weather?: WeatherInfo
   runningIndex: RunningIndex

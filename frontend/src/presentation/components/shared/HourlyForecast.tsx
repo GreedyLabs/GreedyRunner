@@ -46,10 +46,14 @@ export function HourlyForecast({
     container.scrollTo({ left: scrollLeft, behavior: 'smooth' });
   }, [forecast]);
 
-  const bestHourLabel =
-    bestHours.length > 0
-      ? bestHours.map((h) => `${h}시`).join(', ')
-      : '오늘은 좋은 시간대가 없어요';
+  const bestHourLabel = (() => {
+    if (bestHours.length === 0) return '오늘은 좋은 시간대가 없어요';
+    return bestHours.map((h) => {
+      const item = forecast.find((f) => f.hour === h && bestHours.includes(f.hour));
+      const prefix = item?.isNextDay ? '내일 ' : '';
+      return `${prefix}${h}시`;
+    }).join(', ');
+  })();
 
   return (
     <Card className="animate-slide-up">
@@ -76,74 +80,95 @@ export function HourlyForecast({
             className="flex items-end gap-[3px] sm:gap-1"
             style={{ height: BAR_MAX + 20 }}
           >
-            {forecast.map((hourData) => {
-              const { hour, runningIndex } = hourData;
-              const isNow = hour === currentHour;
+            {forecast.map((hourData, index) => {
+              const { hour, runningIndex, isNextDay } = hourData;
+              const isNow = hour === currentHour && !isNextDay;
               const isBest = bestHours.includes(hour);
               const isSelected = selectedHour === hour;
-              const isPast = hour < currentHour && !isSelected;
+              const isPast = !isNextDay && hour < currentHour && !isSelected;
               const color = STATUS_COLOR[runningIndex.status];
               const barH = Math.max(4, (runningIndex.score / 100) * BAR_MAX);
+              const showDayDivider = isNextDay && index > 0 && !forecast[index - 1].isNextDay;
 
               return (
                 <button
-                  key={hour}
+                  key={`${isNextDay ? 'next' : 'today'}-${hour}`}
                   ref={isNow ? currentBarRef : undefined}
                   type="button"
-                  className="flex-1 flex flex-col items-center justify-end gap-0.5 cursor-pointer group"
+                  className={cn(
+                    'flex-1 flex flex-col items-center justify-end gap-0.5 cursor-pointer group',
+                    showDayDivider && 'border-l border-dashed border-gray-300 pl-[2px]',
+                  )}
                   onClick={() => onHourSelect(hourData)}
                 >
-                  {/* 점수 (현재/선택 시간만) */}
-                  {(isNow || isSelected) && (
+                  {/* 점수 (현재/선택/추천 시간) */}
+                  {(isNow || isSelected || isBest) && (
                     <span
                       className={cn(
                         'text-[9px] sm:text-[10px] font-bold leading-none',
-                        isSelected ? 'text-violet-600' : 'text-blue-600',
+                        isSelected ? 'text-violet-600'
+                          : isNow ? 'text-blue-600'
+                          : 'text-emerald-600',
                       )}
                     >
                       {runningIndex.score}
                     </span>
                   )}
 
-                  {/* 추천 표시 */}
-                  {isBest && !isNow && !isSelected && (
-                    <span className="text-[8px] leading-none">⭐</span>
-                  )}
-
                   {/* 바 */}
                   <div
                     className={cn(
-                      'w-full rounded-md transition-all duration-300',
+                      'w-full rounded-md transition-all duration-300 relative overflow-hidden',
                       color.bar,
                       isSelected && 'ring-1.5 ring-violet-500 ring-offset-1 brightness-110',
                       isNow && !isSelected && 'ring-1.5 ring-blue-500 ring-offset-1',
-                      isPast && 'opacity-35',
+                      isBest && !isSelected && !isNow && 'shadow-[0_0_6px_rgba(16,185,129,0.6)]',
+                      isPast && !isBest && 'opacity-35',
+                      isPast && isBest && 'opacity-60',
                       !isNow && !isSelected && 'group-hover:opacity-80 group-hover:brightness-110',
                     )}
                     style={{ height: `${barH}px` }}
-                  />
+                  >
+                    {/* 추천 시간대 반짝임 */}
+                    {isBest && (
+                      <div
+                        className="absolute inset-0 bg-white rounded-md"
+                        style={{
+                          animation: 'shimmer 1.5s ease-in-out infinite',
+                        }}
+                      />
+                    )}
+                  </div>
                 </button>
               );
             })}
           </div>
 
-          {/* 시간 라벨 (고정 높이, 바와 분리) */}
+          {/* 시간 라벨 + 추천 도트 (고정 높이, 바와 분리) */}
           <div className="flex gap-[3px] sm:gap-1 mt-1.5">
-            {forecast.map(({ hour }) => {
-              const isNow = hour === currentHour;
+            {forecast.map(({ hour, isNextDay }, index) => {
+              const isNow = hour === currentHour && !isNextDay;
               const isSelected = selectedHour === hour;
+              const isBest = bestHours.includes(hour);
+              const showDayLabel = isNextDay && index > 0 && !forecast[index - 1].isNextDay;
               return (
-                <span
-                  key={hour}
-                  className={cn(
-                    'flex-1 text-center text-[9px] sm:text-[10px] leading-none h-3',
-                    isSelected ? 'text-violet-600 font-semibold'
-                      : isNow ? 'text-blue-600 font-semibold'
-                      : 'text-gray-300',
+                <div key={`label-${isNextDay ? 'next' : 'today'}-${hour}`} className="flex-1 flex flex-col items-center gap-0.5">
+                  <span
+                    className={cn(
+                      'text-center text-[9px] sm:text-[10px] leading-none h-3',
+                      isSelected ? 'text-violet-600 font-semibold'
+                        : isNow ? 'text-blue-600 font-semibold'
+                        : isBest ? 'text-emerald-500 font-semibold'
+                        : showDayLabel ? 'text-gray-500 font-semibold'
+                        : 'text-gray-300',
+                    )}
+                  >
+                    {showDayLabel ? '내일' : isSelected || isNow || isBest ? hour : hour % 3 === 0 ? hour : ''}
+                  </span>
+                  {isBest && (
+                    <div className="w-1 h-1 rounded-full bg-emerald-400" />
                   )}
-                >
-                  {isSelected || isNow ? hour : hour % 3 === 0 ? hour : ''}
-                </span>
+                </div>
               );
             })}
           </div>

@@ -49,12 +49,15 @@ function calculateScore(m: AirQualityMetrics, w?: WeatherInfo): number {
     pm25P * 0.35 + pm10P * 0.20 + o3P * 0.15 +
     tempP * 0.12 + humP  * 0.08 + windP * 0.05 + precipP * 0.05
 
-  const totalPenalty = applyCompoundPenalty(
+  const compoundPenalty = applyCompoundPenalty(
     basePenalty,
     [pm25P, pm10P, o3P, tempP, humP, windP, precipP]
   )
 
-  return Math.max(0, Math.min(100, Math.round(100 - totalPenalty)))
+  // 강수 강제 감점 (가중치와 별개로 적용)
+  const precipBonus = precipitationForcePenalty(w.precipitation)
+
+  return Math.max(0, Math.min(100, Math.round(100 - compoundPenalty - precipBonus)))
 }
 
 /**
@@ -125,6 +128,16 @@ function precipitationPenalty(precip: string): number {
     case 'rain': return 80
     case 'sleet': return 90
     case 'snow': return 100
+    default: return 0
+  }
+}
+
+/** 강수 강제 감점 — 가중치와 별개로 직접 차감 */
+function precipitationForcePenalty(precip: string): number {
+  switch (precip) {
+    case 'rain': return 15
+    case 'sleet': return 25
+    case 'snow': return 30
     default: return 0
   }
 }

@@ -27,6 +27,7 @@ export interface RunningIndex {
 
 export interface HourlyForecast {
   hour: number           // 0–23
+  isNextDay?: boolean    // true이면 다음 날
   runningIndex: RunningIndex
   airQuality: AirQualityMetrics
   weather?: WeatherInfo

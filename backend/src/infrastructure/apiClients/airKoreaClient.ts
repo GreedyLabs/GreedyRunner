@@ -296,33 +296,46 @@ function buildAirQualityData(
     if (!hourlyMap.has(hour)) hourlyMap.set(hour, parseMeasurement(item));
   }
 
-  // 24시간 예보 구성
-  const hourlyForecast = Array.from({ length: 24 }, (_, hour) => {
+  // 현재 시간 ±12시간 예보 구성 (총 24시간)
+  const startHour = currentHour - 12;
+  const hourlyForecast = Array.from({ length: 24 }, (_, i) => {
+    const rawHour = startHour + i;
+    const hour = ((rawHour % 24) + 24) % 24; // 0~23으로 정규화
+    const isNextDay = rawHour >= 24;
+
     let metrics: AirQualityMetrics;
-    if (hourlyMap.has(hour)) {
+    if (!isNextDay && hourlyMap.has(hour)) {
       metrics = hourlyMap.get(hour)!;
-    } else if (hour <= currentHour) {
+    } else if (!isNextDay && hour <= currentHour) {
       metrics = currentMetrics;
     } else {
       metrics = predictMetrics(currentMetrics, hour);
     }
 
-    const wx = hourlyWeather?.get(hour);
+    const wx = !isNextDay ? hourlyWeather?.get(hour) : undefined;
     const weatherInfo = wx ? toWeatherInfo(wx) : undefined;
     return {
       hour,
+      isNextDay,
       airQuality: metrics,
       weather: weatherInfo,
       runningIndex: getRunningIndex(metrics, weatherInfo),
     };
   });
 
+  // 최적 시간: 현재 이후 시간만, 점수 60 이상
   const bestRunningHours = [...hourlyForecast]
-    .filter((h) => h.runningIndex.score >= 60)
+    .filter((h) => {
+      const isFuture = h.isNextDay || h.hour > currentHour;
+      return isFuture && h.runningIndex.score >= 60;
+    })
     .sort((a, b) => b.runningIndex.score - a.runningIndex.score)
     .slice(0, 3)
-    .map((h) => h.hour)
-    .sort((a, b) => a - b);
+    .sort((a, b) => {
+      if (a.isNextDay !== b.isNextDay) return a.isNextDay ? 1 : -1;
+      return a.hour - b.hour;
+    })
+    .map((h) => h.hour);
 
   return {
     regionName: fallback ? `${fallback.fallbackStation} 측정소` : `${stationName} 측정소`,
