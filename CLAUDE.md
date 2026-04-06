@@ -71,13 +71,13 @@ GreedyRunner/
 ```bash
 # Frontend
 cd frontend
-npm install
-npm run dev        # http://localhost:5173
+pnpm install
+pnpm run dev        # http://localhost:5173
 
 # Backend
 cd backend
-npm install
-npm run dev    # http://localhost:8000
+pnpm install
+pnpm run dev    # http://localhost:8000
 ```
 
 ## Mock → 실제 API 전환 포인트
