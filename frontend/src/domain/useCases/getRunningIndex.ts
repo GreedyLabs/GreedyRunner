@@ -132,12 +132,12 @@ function precipitationPenalty(precip: string): number {
   }
 }
 
-/** 강수 강제 감점 — 가중치와 별개로 직접 차감 */
+/** 강수 강제 감점 — 가중치와 별개로 직접 차감. 비/눈은 노면 위험 + 시야 저하로 보수적 판단 */
 function precipitationForcePenalty(precip: string): number {
   switch (precip) {
-    case 'rain': return 15
-    case 'sleet': return 25
-    case 'snow': return 30
+    case 'rain': return 30
+    case 'sleet': return 45
+    case 'snow': return 50
     default: return 0
   }
 }

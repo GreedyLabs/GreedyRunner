@@ -1,5 +1,6 @@
 import { cn } from '../../../lib/cn'
 import type { RunningIndex, AirQualityMetrics, WeatherInfo } from '../../../domain/entities/airQuality.types'
+import { RunnerAvatar } from './RunnerAvatar'
 
 interface RunningIndexCardProps {
   runningIndex: RunningIndex
@@ -145,6 +146,12 @@ export function RunningIndexCard({
                 )}
               </>
             )}
+          {/* 추천 옷차림 */}
+          {weather && (
+            <div className="mt-4 sm:mt-5 pt-4 border-t border-white/15">
+              <RunnerAvatar weather={weather} />
+            </div>
+          )}
           </div>
         </div>
       </div>
