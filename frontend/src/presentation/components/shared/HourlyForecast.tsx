@@ -7,6 +7,7 @@ interface HourlyForecastProps {
   forecast: HourlyForecastType[];
   bestHours: number[];
   selectedHour: number | null;
+  updatedAt: Date;
   onHourSelect: (hourData: HourlyForecastType) => void;
 }
 
@@ -32,9 +33,11 @@ export function HourlyForecast({
   forecast,
   bestHours,
   selectedHour,
+  updatedAt,
   onHourSelect,
 }: HourlyForecastProps) {
-  const currentHour = new Date().getHours();
+  // 측정 시각을 기준으로 '현재' 시간 판단 (백엔드의 currentHour와 일치)
+  const currentHour = updatedAt.getHours();
   const scrollRef = useRef<HTMLDivElement>(null);
   const currentBarRef = useRef<HTMLButtonElement>(null);
 
@@ -74,7 +77,8 @@ export function HourlyForecast({
 
       {/* 바 차트 */}
       <div ref={scrollRef} className="overflow-x-auto -mx-1 px-1 pb-1">
-        <div style={{ minWidth: '540px' }}>
+        {/* pt-7: 호버 툴팁이 바 위에 표시될 수 있도록 여유 공간 확보 */}
+        <div style={{ minWidth: '540px' }} className="pt-7">
           {/* 바 영역 */}
           <div
             className="flex items-end gap-[3px] sm:gap-1"
@@ -95,12 +99,21 @@ export function HourlyForecast({
                   key={`${isNextDay ? 'next' : 'today'}-${hour}`}
                   ref={isNow ? currentBarRef : undefined}
                   type="button"
+                  aria-label={`${isNextDay ? '내일 ' : ''}${hour}시 러닝지수 ${runningIndex.score}점`}
                   className={cn(
-                    'flex-1 flex flex-col items-center justify-end gap-0.5 cursor-pointer group',
+                    'relative flex-1 flex flex-col items-center justify-end gap-0.5 cursor-pointer group',
                     showDayDivider && 'border-l border-dashed border-gray-300 pl-[2px]',
                   )}
                   onClick={() => onHourSelect(hourData)}
                 >
+                  {/* 호버 툴팁 */}
+                  <div
+                    role="tooltip"
+                    className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 rounded-md bg-gray-800 text-white text-[10px] font-semibold whitespace-nowrap shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20"
+                  >
+                    {isNextDay ? '내일 ' : ''}{hour}시 · {runningIndex.score}점
+                  </div>
+
                   {/* 점수 (현재/선택/추천 시간) */}
                   {(isNow || isSelected || isBest) && (
                     <span

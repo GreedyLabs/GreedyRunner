@@ -67,7 +67,7 @@ export function RunningIndexCard({
   })
 
   const isHourSelected = selectedHour !== null
-  const timeLabel = isHourSelected ? `${selectedHour}시 예보` : `${formattedTime} 기준`
+  const timeLabel = isHourSelected ? `${selectedHour}시 예보` : `${formattedTime} 측정`
   const questionLabel = isHourSelected ? `${selectedHour}시에 달려도 되나요?` : '지금 여기서 달려도 되나요?'
 
   return (

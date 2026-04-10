@@ -82,8 +82,10 @@ pnpm run dev    # http://localhost:8000
 
 ## Mock → 실제 API 전환 포인트
 
-- **Frontend:** `frontend/src/infrastructure/api/mockAirQualityApi.ts`
 - **Backend:** `backend/src/infrastructure/apiClients/mockAirQualityClient.ts`
+  — `AIR_KOREA_API_KEY` 미설정 시 자동으로 실제 클라이언트 대신 사용됨 ([airQuality.ts](backend/src/api/v1/routes/airQuality.ts))
+- 프론트엔드는 항상 백엔드 API(`airQualityApi.ts`)를 통해 데이터를 받으며, 별도 mock 레이어는 두지 않는다.
+  러닝 지수 알고리즘은 `backend/src/domain/useCases/getRunningIndex.ts` **한 곳에서만** 관리된다.
 
 ## 참고 리소스
 

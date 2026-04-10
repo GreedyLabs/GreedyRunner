@@ -24,12 +24,17 @@ const STATUS_MESSAGES: Record<RunningStatus, string> = {
  *   기상   30% — 기온(15%), 습도(10%), 강수(5%)
  *
  * weather가 없으면 대기질만으로 100점 만점 계산 (기존 호환)
+ *
+ * hour를 전달하면 야간(20~06시) O₃ 페널티를 감경합니다.
+ * — 광화학 반응이 멎어 실제 O₃ 농도가 낮 대비 매우 낮고, 러닝 중 생리적 영향도 작아
+ *   고정 임계값을 그대로 적용하면 센서 잔류값이나 교외 배경 농도에 과도하게 감점됩니다.
  */
 export function getRunningIndex(
   metrics: AirQualityMetrics,
-  weather?: WeatherInfo
+  weather?: WeatherInfo,
+  hour?: number,
 ): RunningIndex {
-  const score = calculateScore(metrics, weather)
+  const score = calculateScore(metrics, weather, hour)
   const status = scoreToStatus(score)
 
   // 비/눈이면 메시지 오버라이드
@@ -48,10 +53,10 @@ export function getRunningIndex(
   }
 }
 
-function calculateScore(m: AirQualityMetrics, w?: WeatherInfo): number {
+function calculateScore(m: AirQualityMetrics, w?: WeatherInfo, hour?: number): number {
   const pm25P = pm25Penalty(m.pm25)
   const pm10P = pm10Penalty(m.pm10)
-  const o3P   = o3Penalty(m.o3)
+  const o3P   = o3Penalty(m.o3, hour)
 
   if (!w) {
     // 기상 데이터 없으면 대기질만으로 계산 (기존 호환)
@@ -111,10 +116,21 @@ function pm10Penalty(v: number): number {
   return 100
 }
 
-function o3Penalty(v: number): number {
-  if (v <= 0.03) return 0
-  if (v <= 0.09) return ((v - 0.03) / 0.06) * 50
-  return 100
+/**
+ * 야간(20~06시)에는 광화학 반응이 멎어 실제 O₃ 농도가 낮 대비 매우 낮다.
+ * 고정 임계값(0.03 ppm~)을 그대로 적용하면 센서 잔류값·교외 배경 농도에 과도 감점되므로
+ * hour가 야간 구간일 때 페널티를 30%로 감경한다.
+ */
+function o3Penalty(v: number, hour?: number): number {
+  const base =
+    v <= 0.03 ? 0
+    : v <= 0.09 ? ((v - 0.03) / 0.06) * 50
+    : 100
+
+  if (hour !== undefined && (hour >= 20 || hour < 7)) {
+    return base * 0.3
+  }
+  return base
 }
 
 // ── 기상 페널티 (0~100) ──────────────────────────────────────

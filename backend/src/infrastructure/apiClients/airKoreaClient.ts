@@ -280,14 +280,13 @@ function buildAirQualityData(
   hourlyWeather: Map<number, Awaited<ReturnType<typeof getCurrentWeather>>> | null,
   fallback?: StationFallback,
 ): AirQualityData {
-  const now = new Date();
-  const kstNow = new Date(now.getTime() + (now.getTimezoneOffset() + 540) * 60_000);
-  const currentHour = kstNow.getHours();
-
+  // 기준 시각은 실제 최신 측정값의 시각으로 고정한다.
+  // 에어코리아는 매시 정각 측정을 30~60분 지연 발표하므로 서버 wall-clock(now)을
+  // 그대로 쓰면 "15:30 측정"이라 표시되지만 실제 데이터는 14:00인 불일치가 발생한다.
+  // → updatedAt/currentHour 모두 latestItem.dataTime 기준으로 정렬해 라벨·칩·차트가 일치하도록 한다.
   const latestItem = measurements[0];
-  const currentMetrics = latestItem ? parseMeasurement(latestItem) : defaultMetrics();
-  const currentWx = currentWeather ? toWeatherInfo(currentWeather) : undefined;
-  const currentRunningIndex = getRunningIndex(currentMetrics, currentWx);
+  const updatedAt = latestItem ? parseKstDataTime(latestItem.dataTime) : new Date();
+  const currentHour = latestItem ? parseHour(latestItem.dataTime) : getKstHour(new Date());
 
   // 실측 데이터를 시간별로 매핑
   const hourlyMap = new Map<number, AirQualityMetrics>();
@@ -296,30 +295,68 @@ function buildAirQualityData(
     if (!hourlyMap.has(hour)) hourlyMap.set(hour, parseMeasurement(item));
   }
 
+  // 현재(=최신 측정) 데이터
+  const currentMetrics = latestItem ? parseMeasurement(latestItem) : defaultMetrics();
+  const currentWx = currentWeather ? toWeatherInfo(currentWeather) : undefined;
+  const currentRunningIndex = getRunningIndex(currentMetrics, currentWx, currentHour);
+
   // 현재 시간 ±12시간 예보 구성 (총 24시간)
+  // 주의 1: 에어코리아 API는 어제 늦은 시간 + 오늘 데이터를 섞어서 반환하므로,
+  //         미래 시간(hour > currentHour)에는 hourlyMap을 절대 사용하지 않음 (어제 데이터이기 때문)
+  // 주의 2: 현재 시각(hour === currentHour) 바는 카드 칩과 100% 동일해야 하므로
+  //         currentMetrics/currentWx/currentRunningIndex를 그대로 재사용한다.
+  // 주의 3: 단기예보(hourlyWeather)는 base_time 이후 시간만 반환하므로 과거 시간에 대해
+  //         undefined가 된다. weather를 넘기지 않으면 getRunningIndex가 대기질만 사용하는
+  //         3-factor 공식(pm25 50% + pm10 30% + o3 20%)으로 분기해, weather가 있는 바
+  //         (7-factor + 강수 force penalty)와 동일한 AQ에도 점수가 다르게 계산되어
+  //         바 간 비교가 일관되지 않게 된다. 특히 currentWx에 비·눈이 잡혀 있으면 현재 바만
+  //         30점 강제 감점을 받아 과거 바 대비 급격히 낮게 보인다.
+  //         → 오늘 구간에서 hourlyWeather에 해당 시간이 없으면 currentWx로 폴백해
+  //           모든 today 바가 동일한 7-factor 공식을 유지하도록 한다.
   const startHour = currentHour - 12;
   const hourlyForecast = Array.from({ length: 24 }, (_, i) => {
     const rawHour = startHour + i;
     const hour = ((rawHour % 24) + 24) % 24; // 0~23으로 정규화
     const isNextDay = rawHour >= 24;
+    const isCurrent = !isNextDay && hour === currentHour;
+    const isPastOrNowToday = !isNextDay && hour <= currentHour;
+
+    if (isCurrent) {
+      // 카드 칩과 동일한 값을 그대로 반환
+      return {
+        hour,
+        isNextDay,
+        airQuality: currentMetrics,
+        weather: currentWx,
+        runningIndex: currentRunningIndex,
+      };
+    }
 
     let metrics: AirQualityMetrics;
-    if (!isNextDay && hourlyMap.has(hour)) {
+    if (isPastOrNowToday && hourlyMap.has(hour)) {
+      // 오늘 과거 시간 중 실측값이 있으면 사용
       metrics = hourlyMap.get(hour)!;
-    } else if (!isNextDay && hour <= currentHour) {
+    } else if (isPastOrNowToday) {
+      // 오늘 과거 시간인데 실측값이 없으면 현재값 사용
       metrics = currentMetrics;
     } else {
+      // 미래 시간(오늘 이후 또는 내일)은 항상 예측
       metrics = predictMetrics(currentMetrics, hour);
     }
 
+    // weather 폴백: 주의 3 참조
     const wx = !isNextDay ? hourlyWeather?.get(hour) : undefined;
-    const weatherInfo = wx ? toWeatherInfo(wx) : undefined;
+    const weatherInfo: WeatherInfo | undefined = wx
+      ? toWeatherInfo(wx)
+      : !isNextDay
+        ? currentWx
+        : undefined;
     return {
       hour,
       isNextDay,
       airQuality: metrics,
       weather: weatherInfo,
-      runningIndex: getRunningIndex(metrics, weatherInfo),
+      runningIndex: getRunningIndex(metrics, weatherInfo, hour),
     };
   });
 
@@ -339,7 +376,7 @@ function buildAirQualityData(
 
   return {
     regionName: fallback ? `${fallback.fallbackStation} 측정소` : `${stationName} 측정소`,
-    updatedAt: now,
+    updatedAt,
     stationFallback: fallback,
     current: {
       airQuality: currentMetrics,
@@ -372,6 +409,19 @@ function roundTo(v: number, decimals: number): number {
 
 function parseHour(dataTime: string): number {
   return parseInt(dataTime.split(' ')[1]?.split(':')[0] ?? '0', 10);
+}
+
+/** 에어코리아 dataTime("YYYY-MM-DD HH:mm", KST 기준)을 Date 인스턴트로 변환 */
+function parseKstDataTime(dataTime: string): Date {
+  const [date, time] = dataTime.split(' ');
+  // 정각 기준 "HH:mm" 포맷. +09:00 오프셋을 명시해 서버 TZ와 무관한 UTC 인스턴트 생성
+  return new Date(`${date}T${time}:00+09:00`);
+}
+
+/** 서버 TZ와 무관하게 KST 기준 시간(0~23) 반환 */
+function getKstHour(d: Date): number {
+  const kst = new Date(d.getTime() + (d.getTimezoneOffset() + 540) * 60_000);
+  return kst.getHours();
 }
 
 function defaultMetrics(): AirQualityMetrics {

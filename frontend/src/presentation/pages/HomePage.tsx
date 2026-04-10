@@ -105,6 +105,7 @@ export function HomePage() {
             forecast={data.hourlyForecast}
             bestHours={data.bestRunningHours}
             selectedHour={selectedHourData?.hour ?? null}
+            updatedAt={data.updatedAt}
             onHourSelect={handleHourSelect}
           />
           <AirQualityDetails metrics={displayAirQuality} weather={displayWeather} />

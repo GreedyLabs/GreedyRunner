@@ -1,6 +1,6 @@
 /**
- * 백엔드 API 클라이언트
- * mockAirQualityApi.ts와 동일한 인터페이스를 제공하여 훅에서 교체 가능
+ * 백엔드 API 클라이언트 — 프론트엔드의 유일한 대기질 데이터 소스.
+ * 러닝 지수는 백엔드에서 계산되어 그대로 렌더링된다 (프론트엔드에 알고리즘 사본 없음).
  */
 import type { AirQualityData } from '../../domain/entities/airQuality.types'
 import type { Region } from '../../domain/entities/region.types'
@@ -8,7 +8,10 @@ import type { Region } from '../../domain/entities/region.types'
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
 
 async function apiFetch<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`)
+  const res = await fetch(`${API_BASE}${path}`, {
+    cache: 'no-store',
+    headers: { 'Cache-Control': 'no-cache' },
+  })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
     throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`)
