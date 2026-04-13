@@ -46,8 +46,18 @@ export function MainLayout({ children }: MainLayoutProps) {
                 <span>러닝 지수</span>
               </>
             )}
-            <svg className="w-3 h-3 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d={isHome ? 'M9 5l7 7-7 7' : 'M15 19l-7-7 7-7'} />
+            <svg
+              className="w-3 h-3 opacity-60"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2.5}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d={isHome ? 'M9 5l7 7-7 7' : 'M15 19l-7-7 7-7'}
+              />
             </svg>
           </Link>
         </div>
@@ -73,9 +83,16 @@ export function MainLayout({ children }: MainLayoutProps) {
             </span>
           </div>
         )}
-        <p className="text-[10px] sm:text-xs text-gray-400">
-          Copyright 2026. GreedyLabs Co. All rights reserved.
-        </p>
+        <div className="flex items-center justify-center gap-1.5 text-[10px] sm:text-xs text-gray-400">
+          <span>Copyright 2026. GreedyLabs Co.</span>
+          <span className="text-gray-300">|</span>
+          <a
+            href="mailto:hailey@greedylabs.kr?subject=[GreedyRunner] 문의"
+            className="text-gray-400 hover:text-gray-600 underline underline-offset-2 transition-colors"
+          >
+            문의하기
+          </a>
+        </div>
       </footer>
     </div>
   );

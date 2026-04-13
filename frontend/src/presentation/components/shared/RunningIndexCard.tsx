@@ -135,7 +135,7 @@ export function RunningIndexCard({
           )}
 
           {/* 대기질 + 기상 요약 칩 */}
-          <div className="grid grid-cols-3 sm:flex sm:flex-wrap gap-1.5 sm:gap-2 mt-4 sm:mt-5">
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-2 mt-4 sm:mt-5">
             <AirChip label="초미세" value={airQuality.pm25} unit="μg/m³" threshold={[15, 35, 75]} />
             <AirChip label="미세" value={airQuality.pm10} unit="μg/m³" threshold={[30, 80, 150]} />
             <AirChip label="오존" value={Math.round(airQuality.o3 * 1000)} unit="ppb" threshold={[30, 60, 90]} />
