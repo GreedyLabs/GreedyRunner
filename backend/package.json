@@ -1,5 +1,5 @@
 {
-  "name": "greedy-runner-backend",
+  "name": "@greedy-runner/backend",
   "version": "0.1.0",
   "description": "GreedyRunner API - 달리기 최적 타이밍 안내 서비스",
   "main": "dist/main.js",

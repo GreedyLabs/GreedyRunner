@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Card } from '../ui/Card';
 import type { HourlyForecast as HourlyForecastType } from '../../../domain/entities/airQuality.types';
 import { cn } from '../../../lib/cn';
+import { STATUS_COLORS, BEST_HOUR_COLORS } from '../../../lib/runningStatusColors';
 
 interface BestHour {
   hour: number;
@@ -14,14 +15,6 @@ interface HourlyForecastProps {
   selectedHour: number | null;
   onHourSelect: (hourData: HourlyForecastType) => void;
 }
-
-const STATUS_COLOR = {
-  great: { bar: 'bg-blue-400', text: 'text-blue-600' },
-  good: { bar: 'bg-emerald-400', text: 'text-emerald-600' },
-  caution: { bar: 'bg-amber-400', text: 'text-amber-600' },
-  bad: { bar: 'bg-orange-400', text: 'text-orange-600' },
-  worst: { bar: 'bg-red-400', text: 'text-red-600' },
-};
 
 const STATUS_LEGEND: Record<string, string> = {
   great: '최적',
@@ -66,10 +59,10 @@ export function HourlyForecast({
       </div>
 
       {bestHourLabel ? (
-        <div className="bg-blue-50 rounded-xl p-3 mb-4 flex items-center gap-2">
+        <div className={cn('rounded-xl p-3 mb-4 flex items-center gap-2', BEST_HOUR_COLORS.bannerBg)}>
           <div>
-            <p className="text-xs text-blue-500 font-medium">언제 달리는 게 더 좋을까요?</p>
-            <p className="text-sm font-bold text-blue-700">{bestHourLabel}가 최적입니다</p>
+            <p className={cn('text-xs font-medium', BEST_HOUR_COLORS.bannerTextMuted)}>언제 달리는 게 더 좋을까요?</p>
+            <p className={cn('text-sm font-bold', BEST_HOUR_COLORS.bannerText)}>{bestHourLabel}가 최적입니다</p>
           </div>
         </div>
       ) : (
@@ -94,7 +87,7 @@ export function HourlyForecast({
               const isNow = index === 0;
               const isBest = isBestHour(hour, isNextDay);
               const isSelected = selectedHour === hour;
-              const color = STATUS_COLOR[runningIndex.status];
+              const color = STATUS_COLORS[runningIndex.status];
               const barH = Math.max(4, (runningIndex.score / 100) * BAR_MAX);
 
               const prevItem = index > 0 ? forecast[index - 1] : null;
@@ -128,7 +121,7 @@ export function HourlyForecast({
                         'text-[9px] sm:text-[10px] font-bold leading-none',
                         isSelected ? 'text-violet-600'
                           : isNow ? 'text-blue-600'
-                          : 'text-emerald-600',
+                          : BEST_HOUR_COLORS.text,
                       )}
                     >
                       {runningIndex.score}
@@ -142,7 +135,7 @@ export function HourlyForecast({
                       color.bar,
                       isSelected && 'ring-1.5 ring-violet-500 ring-offset-1 brightness-110',
                       isNow && !isSelected && 'ring-1.5 ring-blue-500 ring-offset-1',
-                      isBest && !isSelected && !isNow && 'shadow-[0_0_6px_rgba(16,185,129,0.6)]',
+                      isBest && !isSelected && !isNow && BEST_HOUR_COLORS.glow,
                       !isNow && !isSelected && 'group-hover:opacity-80 group-hover:brightness-110',
                     )}
                     style={{ height: `${barH}px` }}
@@ -176,7 +169,7 @@ export function HourlyForecast({
                       'text-center text-[9px] sm:text-[10px] leading-none h-3',
                       isSelected ? 'text-violet-600 font-semibold'
                         : isNow ? 'text-blue-600 font-semibold'
-                        : isBest ? 'text-emerald-500 font-semibold'
+                        : isBest ? cn(BEST_HOUR_COLORS.textMuted, 'font-semibold')
                         : showNextDayLabel ? 'text-gray-500 font-semibold'
                         : 'text-gray-300',
                     )}
@@ -187,7 +180,7 @@ export function HourlyForecast({
                       : ''}
                   </span>
                   {isBest && (
-                    <div className="w-1 h-1 rounded-full bg-emerald-400" />
+                    <div className={cn('w-1 h-1 rounded-full', BEST_HOUR_COLORS.dot)} />
                   )}
                 </div>
               );
@@ -198,10 +191,10 @@ export function HourlyForecast({
 
       {/* 범례 */}
       <div className="flex justify-between sm:justify-start sm:gap-3 mt-3 pt-3 border-t border-gray-100">
-        {Object.entries(STATUS_COLOR).map(([status, { bar, text }]) => (
+        {Object.entries(STATUS_COLORS).map(([status, colors]) => (
           <div key={status} className="flex items-center gap-1">
-            <div className={cn('w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-[3px]', bar)} />
-            <span className={cn('text-[10px] sm:text-xs', text)}>{STATUS_LEGEND[status]}</span>
+            <div className={cn('w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-[3px]', colors.bar)} />
+            <span className={cn('text-[10px] sm:text-xs', colors.text)}>{STATUS_LEGEND[status]}</span>
           </div>
         ))}
       </div>

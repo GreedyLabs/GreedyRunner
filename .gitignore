@@ -1,14 +1,15 @@
-# Frontend
-frontend/node_modules/
-frontend/dist/
-frontend/.env.local
+# Dependencies (monorepo)
+node_modules/
 
-# Backend
-backend/node_modules/
+# Build outputs
+frontend/dist/
 backend/dist/
+
+# Environment
+frontend/.env.local
 backend/.env
+.env
 
 # OS
 .DS_Store
-.env
 .claude/

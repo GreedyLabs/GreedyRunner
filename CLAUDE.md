@@ -4,10 +4,14 @@
 
 ## 프로젝트 구조
 
+pnpm workspaces 기반 모노레포입니다.
+
 ```
 GreedyRunner/
-  frontend/    # React 18 + TypeScript + Vite + Tailwind CSS
-  backend/     # Node.js + Express + TypeScript
+  frontend/            # @greedy-runner/frontend — React 18 + TypeScript + Vite + Tailwind CSS
+  backend/             # @greedy-runner/backend  — Node.js + Express + TypeScript
+  package.json         # 루트 워크스페이스 (scripts 정의)
+  pnpm-workspace.yaml  # 워크스페이스 패키지 선언
   CLAUDE.md
   .gitignore
 ```
@@ -69,15 +73,20 @@ GreedyRunner/
 ## 프로젝트 시작하기
 
 ```bash
-# Frontend
-cd frontend
+# 루트에서 전체 의존성 설치
 pnpm install
-pnpm run dev        # http://localhost:5173
 
-# Backend
-cd backend
-pnpm install
-pnpm run dev    # http://localhost:8000
+# 동시 실행 (frontend + backend)
+pnpm dev
+
+# 개별 실행
+pnpm frontend:dev    # http://localhost:5173
+pnpm backend:dev     # http://localhost:8000
+
+# 빌드
+pnpm build           # 전체 빌드
+pnpm frontend:build
+pnpm backend:build
 ```
 
 ## Mock → 실제 API 전환 포인트

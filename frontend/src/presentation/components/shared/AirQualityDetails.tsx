@@ -39,9 +39,9 @@ export function AirQualityDetails({ metrics, weather }: AirQualityDetailsProps) 
       description: '지름 2.5μm 이하의 극미세 입자로, 머리카락 굵기의 1/20~1/30 크기입니다. 폐 깊숙이 침투해 혈류까지 흡수됩니다.',
       healthEffect: '장기간 노출 시 호흡기·심혈관 질환 위험 증가. 민감군(어린이·노인·임산부)에게 특히 위험합니다.',
       thresholds: [
-        { max: 8,        label: '최고',       color: 'text-emerald-700 bg-emerald-50',  description: '러닝에 최적인 공기입니다.' },
-        { max: 15,       label: '좋음',       color: 'text-teal-600 bg-teal-50',        description: '야외 활동에 적합합니다.' },
-        { max: 25,       label: '보통',       color: 'text-blue-600 bg-blue-50',        description: '대부분의 사람에게 무리 없는 수준입니다.' },
+        { max: 8,        label: '최고',       color: 'text-blue-700 bg-blue-50',  description: '러닝에 최적인 공기입니다.' },
+        { max: 15,       label: '좋음',       color: 'text-emerald-600 bg-emerald-50',        description: '야외 활동에 적합합니다.' },
+        { max: 25,       label: '보통',       color: 'text-yellow-600 bg-yellow-50',        description: '대부분의 사람에게 무리 없는 수준입니다.' },
         { max: 35,       label: '민감군주의', color: 'text-amber-600 bg-amber-50',      description: '민감군은 장시간 격렬한 운동을 줄이세요.' },
         { max: 75,       label: '나쁨',       color: 'text-orange-600 bg-orange-50',    description: '실외 활동을 자제하고 마스크를 착용하세요.' },
         { max: Infinity, label: '매우나쁨',   color: 'text-red-600 bg-red-50',          description: '모든 사람이 실외 활동을 자제해야 합니다.' },
@@ -56,9 +56,9 @@ export function AirQualityDetails({ metrics, weather }: AirQualityDetailsProps) 
       description: '지름 10μm 이하의 먼지 입자입니다. 흙먼지, 꽃가루, 자동차 배기가스 등이 주요 발생원입니다.',
       healthEffect: '코·목에 자극을 주고 기관지 질환을 악화시킵니다. 황사 시즌에는 농도가 급격히 상승합니다.',
       thresholds: [
-        { max: 15,       label: '최고',       color: 'text-emerald-700 bg-emerald-50',  description: '러닝에 최적인 공기입니다.' },
-        { max: 30,       label: '좋음',       color: 'text-teal-600 bg-teal-50',        description: '야외 활동에 적합합니다.' },
-        { max: 50,       label: '보통',       color: 'text-blue-600 bg-blue-50',        description: '대부분의 사람에게 무리 없는 수준입니다.' },
+        { max: 15,       label: '최고',       color: 'text-blue-700 bg-blue-50',  description: '러닝에 최적인 공기입니다.' },
+        { max: 30,       label: '좋음',       color: 'text-emerald-600 bg-emerald-50',        description: '야외 활동에 적합합니다.' },
+        { max: 50,       label: '보통',       color: 'text-yellow-600 bg-yellow-50',        description: '대부분의 사람에게 무리 없는 수준입니다.' },
         { max: 80,       label: '민감군주의', color: 'text-amber-600 bg-amber-50',      description: '민감군은 장시간 실외 활동을 줄이세요.' },
         { max: 150,      label: '나쁨',       color: 'text-orange-600 bg-orange-50',    description: '실외 활동을 자제하고 마스크를 착용하세요.' },
         { max: Infinity, label: '매우나쁨',   color: 'text-red-600 bg-red-50',          description: '모든 사람이 실외 활동을 자제해야 합니다.' },
@@ -73,9 +73,9 @@ export function AirQualityDetails({ metrics, weather }: AirQualityDetailsProps) 
       description: '자동차·공장 배출가스가 자외선과 반응해 생성되는 2차 오염물질입니다. 맑고 더운 날 낮 시간대에 농도가 높아집니다.',
       healthEffect: '눈·코·기관지를 자극하며, 고농도에서는 폐 기능을 저하시킵니다. 러닝 중 호흡량이 많아 영향이 커집니다.',
       thresholds: [
-        { max: 15,       label: '최고',       color: 'text-emerald-700 bg-emerald-50',  description: '러닝에 최적인 공기입니다.' },
-        { max: 30,       label: '좋음',       color: 'text-teal-600 bg-teal-50',        description: '야외 활동에 적합합니다.' },
-        { max: 50,       label: '보통',       color: 'text-blue-600 bg-blue-50',        description: '대부분의 사람에게 무리 없는 수준입니다.' },
+        { max: 15,       label: '최고',       color: 'text-blue-700 bg-blue-50',  description: '러닝에 최적인 공기입니다.' },
+        { max: 30,       label: '좋음',       color: 'text-emerald-600 bg-emerald-50',        description: '야외 활동에 적합합니다.' },
+        { max: 50,       label: '보통',       color: 'text-yellow-600 bg-yellow-50',        description: '대부분의 사람에게 무리 없는 수준입니다.' },
         { max: 60,       label: '민감군주의', color: 'text-amber-600 bg-amber-50',      description: '민감군은 장시간 격렬한 운동을 줄이세요.' },
         { max: 90,       label: '나쁨',       color: 'text-orange-600 bg-orange-50',    description: '노약자·호흡기 질환자는 실외 활동을 자제하세요.' },
         { max: Infinity, label: '매우나쁨',   color: 'text-red-600 bg-red-50',          description: '모든 사람이 실외 활동을 자제해야 합니다.' },
@@ -90,9 +90,9 @@ export function AirQualityDetails({ metrics, weather }: AirQualityDetailsProps) 
       description: '주로 자동차 엔진, 화력발전소에서 배출됩니다. 오존과 미세먼지 생성의 전구물질이기도 합니다.',
       healthEffect: '기관지를 자극해 기침·호흡 곤란을 유발합니다. 장기 노출 시 천식 위험이 증가합니다.',
       thresholds: [
-        { max: 5,        label: '최고',       color: 'text-emerald-700 bg-emerald-50',  description: '러닝에 최적인 공기입니다.' },
-        { max: 10,       label: '좋음',       color: 'text-teal-600 bg-teal-50',        description: '야외 활동에 적합합니다.' },
-        { max: 20,       label: '보통',       color: 'text-blue-600 bg-blue-50',        description: '대부분의 사람에게 무리 없는 수준입니다.' },
+        { max: 5,        label: '최고',       color: 'text-blue-700 bg-blue-50',  description: '러닝에 최적인 공기입니다.' },
+        { max: 10,       label: '좋음',       color: 'text-emerald-600 bg-emerald-50',        description: '야외 활동에 적합합니다.' },
+        { max: 20,       label: '보통',       color: 'text-yellow-600 bg-yellow-50',        description: '대부분의 사람에게 무리 없는 수준입니다.' },
         { max: 30,       label: '민감군주의', color: 'text-amber-600 bg-amber-50',      description: '민감군은 오랜 노출을 피하세요.' },
         { max: 50,       label: '나쁨',       color: 'text-orange-600 bg-orange-50',    description: '호흡기 질환자는 실외 활동을 자제하세요.' },
         { max: Infinity, label: '매우나쁨',   color: 'text-red-600 bg-red-50',          description: '모든 사람이 실외 활동을 자제해야 합니다.' },
@@ -237,13 +237,13 @@ function WeatherSection({ weather }: { weather: WeatherInfo }) {
   const tempStatus = weather.temperature >= 12 && weather.temperature <= 22
     ? { label: '쾌적', color: 'text-emerald-600 bg-emerald-50' }
     : weather.temperature >= 5 && weather.temperature <= 28
-      ? { label: '보통', color: 'text-blue-600 bg-blue-50' }
+      ? { label: '보통', color: 'text-yellow-600 bg-yellow-50' }
       : { label: '부적합', color: 'text-red-600 bg-red-50' }
 
   const humStatus = weather.humidity >= 40 && weather.humidity <= 60
     ? { label: '쾌적', color: 'text-emerald-600 bg-emerald-50' }
     : weather.humidity >= 30 && weather.humidity <= 80
-      ? { label: '보통', color: 'text-blue-600 bg-blue-50' }
+      ? { label: '보통', color: 'text-yellow-600 bg-yellow-50' }
       : { label: '부적합', color: 'text-red-600 bg-red-50' }
 
   return (

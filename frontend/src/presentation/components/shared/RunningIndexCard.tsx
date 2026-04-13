@@ -1,4 +1,5 @@
 import { cn } from '../../../lib/cn'
+import { STATUS_COLORS } from '../../../lib/runningStatusColors'
 import type { RunningIndex, AirQualityMetrics, WeatherInfo } from '../../../domain/entities/airQuality.types'
 import { RunnerAvatar } from './RunnerAvatar'
 
@@ -13,42 +14,12 @@ interface RunningIndexCardProps {
   onResetHour?: () => void
 }
 
-const STATUS_CONFIG = {
-  great: {
-    bg: 'from-blue-400 to-blue-600',
-    ring: 'ring-blue-300',
-    icon: '🏃',
-    answer: '달려도 됩니다!',
-    answerColor: 'text-white',
-  },
-  good: {
-    bg: 'from-emerald-400 to-emerald-600',
-    ring: 'ring-emerald-300',
-    icon: '👟',
-    answer: '달리기 좋아요',
-    answerColor: 'text-white',
-  },
-  caution: {
-    bg: 'from-amber-400 to-amber-500',
-    ring: 'ring-amber-300',
-    icon: '⚠️',
-    answer: '주의하며 달리세요',
-    answerColor: 'text-white',
-  },
-  bad: {
-    bg: 'from-orange-400 to-orange-600',
-    ring: 'ring-orange-300',
-    icon: '😷',
-    answer: '달리기 자제 권장',
-    answerColor: 'text-white',
-  },
-  worst: {
-    bg: 'from-red-500 to-red-700',
-    ring: 'ring-red-300',
-    icon: '🚫',
-    answer: '오늘은 쉬세요',
-    answerColor: 'text-white',
-  },
+const STATUS_CONTENT = {
+  great:   { icon: '🏃', answer: '달려도 됩니다!' },
+  good:    { icon: '👟', answer: '달리기 좋아요' },
+  caution: { icon: '⚠️', answer: '주의하며 달리세요' },
+  bad:     { icon: '😷', answer: '달리기 자제 권장' },
+  worst:   { icon: '🚫', answer: '오늘은 쉬세요' },
 }
 
 export function RunningIndexCard({
@@ -61,7 +32,8 @@ export function RunningIndexCard({
   selectedDayLabel,
   onResetHour,
 }: RunningIndexCardProps) {
-  const config = STATUS_CONFIG[runningIndex.status]
+  const colors = STATUS_COLORS[runningIndex.status]
+  const content = STATUS_CONTENT[runningIndex.status]
 
   const formattedTime = updatedAt.toLocaleTimeString('ko-KR', {
     hour: '2-digit',
@@ -83,7 +55,7 @@ export function RunningIndexCard({
         onKeyDown={onResetHour ? (e) => { if (e.key === 'Enter' || e.key === ' ') onResetHour() } : undefined}
         className={cn(
           'relative overflow-hidden rounded-3xl bg-gradient-to-br p-6 sm:p-8 text-white shadow-lg',
-          config.bg,
+          colors.gradient,
           isHourSelected && 'cursor-pointer ring-2 ring-violet-300 ring-offset-2'
         )}
       >
@@ -104,8 +76,8 @@ export function RunningIndexCard({
           {/* 핵심 질문 + 답변 */}
           <p className="text-white/80 text-xs sm:text-sm mb-1">{questionLabel}</p>
           <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
-            <span className="text-3xl sm:text-4xl shrink-0">{config.icon}</span>
-            <h2 className="text-2xl sm:text-4xl font-bold leading-tight">{config.answer}</h2>
+            <span className="text-3xl sm:text-4xl shrink-0">{content.icon}</span>
+            <h2 className="text-2xl sm:text-4xl font-bold leading-tight">{content.answer}</h2>
           </div>
 
           {/* 러닝 지수 + 메시지 */}

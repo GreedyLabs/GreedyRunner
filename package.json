@@ -1,0 +1,13 @@
+{
+  "name": "greedy-runner",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --parallel -r run dev",
+    "build": "pnpm -r run build",
+    "frontend:dev": "pnpm --filter @greedy-runner/frontend run dev",
+    "frontend:build": "pnpm --filter @greedy-runner/frontend run build",
+    "backend:dev": "pnpm --filter @greedy-runner/backend run dev",
+    "backend:build": "pnpm --filter @greedy-runner/backend run build",
+    "backend:start": "pnpm --filter @greedy-runner/backend run start"
+  }
+}
