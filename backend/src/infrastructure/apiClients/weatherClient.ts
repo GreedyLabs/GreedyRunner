@@ -201,29 +201,43 @@ export async function getCurrentWeather(lat: number, lng: number): Promise<Weath
   }
 }
 
+export interface HourlyWeatherMap {
+  /** 오늘 hour(0~23) → WeatherMetrics */
+  today: Map<number, WeatherMetrics>
+  /** 내일 hour(0~23) → WeatherMetrics */
+  tomorrow: Map<number, WeatherMetrics>
+}
+
 /**
- * 24시간 시간별 날씨 예보 (단기예보)
- * Map<hour(0~23), WeatherMetrics>
+ * 시간별 날씨 예보 (단기예보).
+ * 단기예보 API는 base_time 이후 최대 3일치를 반환하므로 오늘 + 내일을 모두 담아 리턴한다.
+ * (호출 측이 차트의 isNextDay 바에 내일 데이터를 매핑해 사용)
  */
-export async function getHourlyWeather(lat: number, lng: number): Promise<Map<number, WeatherMetrics>> {
+export async function getHourlyWeather(lat: number, lng: number): Promise<HourlyWeatherMap> {
   const { nx, ny } = latLngToGrid(lat, lng)
   const fcst = await fetchVilageFcst(nx, ny)
-  const today = formatDate(nowKST())
+  const todayStr = formatDate(nowKST())
+  const tomorrowDate = nowKST()
+  tomorrowDate.setDate(tomorrowDate.getDate() + 1)
+  const tomorrowStr = formatDate(tomorrowDate)
 
-  const result = new Map<number, WeatherMetrics>()
+  const today = new Map<number, WeatherMetrics>()
+  const tomorrow = new Map<number, WeatherMetrics>()
+
   for (const [key, cats] of fcst) {
     const [date, time] = key.split('_')
-    if (date !== today) continue
+    const target = date === todayStr ? today : date === tomorrowStr ? tomorrow : null
+    if (!target) continue
     const hour = parseInt(time.slice(0, 2), 10)
 
-    result.set(hour, {
+    target.set(hour, {
       temperature: parseFloat(cats.get('TMP') ?? cats.get('T1H') ?? '0'),
       humidity: parseFloat(cats.get('REH') ?? '0'),
       windSpeed: parseFloat(cats.get('WSD') ?? '0'),
       precipitation: parsePrecipitationType(cats.get('PTY') ?? '0'),
     })
   }
-  return result
+  return { today, tomorrow }
 }
 
 function parsePrecipitationType(pty: string): 'none' | 'rain' | 'snow' | 'sleet' {

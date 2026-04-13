@@ -49,10 +49,11 @@ export function HourlyForecast({
     container.scrollTo({ left: scrollLeft, behavior: 'smooth' });
   }, [forecast]);
 
+  // bestHours는 미래 시간만 포함(어제 제외됨) — 안전하게 라벨 생성
   const bestHourLabel = (() => {
     if (bestHours.length === 0) return '오늘은 좋은 시간대가 없어요';
     return bestHours.map((h) => {
-      const item = forecast.find((f) => f.hour === h && bestHours.includes(f.hour));
+      const item = forecast.find((f) => f.hour === h && !f.isPrevDay);
       const prefix = item?.isNextDay ? '내일 ' : '';
       return `${prefix}${h}시`;
     }).join(', ');
@@ -67,7 +68,6 @@ export function HourlyForecast({
 
       {bestHours.length > 0 && (
         <div className="bg-blue-50 rounded-xl p-3 mb-4 flex items-center gap-2">
-          {/* <span className="text-lg">⏰</span> */}
           <div>
             <p className="text-xs text-blue-500 font-medium">언제 달리는 게 더 좋을까요?</p>
             <p className="text-sm font-bold text-blue-700">{bestHourLabel}가 최적입니다</p>
@@ -85,21 +85,32 @@ export function HourlyForecast({
             style={{ height: BAR_MAX + 20 }}
           >
             {forecast.map((hourData, index) => {
-              const { hour, runningIndex, isNextDay } = hourData;
-              const isNow = hour === currentHour && !isNextDay;
-              const isBest = bestHours.includes(hour);
+              const { hour, runningIndex, isNextDay, isPrevDay } = hourData;
+              const isToday = !isPrevDay && !isNextDay;
+              const isNow = isToday && hour === currentHour;
+              // bestHours는 백엔드에서 어제를 이미 제외하므로 hour만 매칭해도 안전
+              const isBest = !isPrevDay && bestHours.includes(hour);
               const isSelected = selectedHour === hour;
-              const isPast = !isNextDay && hour < currentHour && !isSelected;
+              // 어제 전체 + 오늘 과거 = 흐리게
+              const isPast = isPrevDay || (isToday && hour < currentHour && !isSelected);
               const color = STATUS_COLOR[runningIndex.status];
               const barH = Math.max(4, (runningIndex.score / 100) * BAR_MAX);
-              const showDayDivider = isNextDay && index > 0 && !forecast[index - 1].isNextDay;
+
+              // 일자 경계 구분선: 어제→오늘, 오늘→내일
+              const prevItem = index > 0 ? forecast[index - 1] : null;
+              const showDayDivider =
+                (isToday && prevItem?.isPrevDay) ||
+                (isNextDay && prevItem && !prevItem.isNextDay);
+
+              // 툴팁 접두사
+              const dayPrefix = isPrevDay ? '어제 ' : isNextDay ? '내일 ' : '';
 
               return (
                 <button
-                  key={`${isNextDay ? 'next' : 'today'}-${hour}`}
+                  key={`${isPrevDay ? 'prev' : isNextDay ? 'next' : 'today'}-${hour}`}
                   ref={isNow ? currentBarRef : undefined}
                   type="button"
-                  aria-label={`${isNextDay ? '내일 ' : ''}${hour}시 러닝지수 ${runningIndex.score}점`}
+                  aria-label={`${dayPrefix}${hour}시 러닝지수 ${runningIndex.score}점`}
                   className={cn(
                     'relative flex-1 flex flex-col items-center justify-end gap-0.5 cursor-pointer group',
                     showDayDivider && 'border-l border-dashed border-gray-300 pl-[2px]',
@@ -111,11 +122,11 @@ export function HourlyForecast({
                     role="tooltip"
                     className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 rounded-md bg-gray-800 text-white text-[10px] font-semibold whitespace-nowrap shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20"
                   >
-                    {isNextDay ? '내일 ' : ''}{hour}시 · {runningIndex.score}점
+                    {dayPrefix}{hour}시 · {runningIndex.score}점
                   </div>
 
-                  {/* 점수 (현재/선택/추천 시간) */}
-                  {(isNow || isSelected || isBest) && (
+                  {/* 점수 (현재/선택/추천 시간만 — 어제는 표시 안 함) */}
+                  {!isPrevDay && (isNow || isSelected || isBest) && (
                     <span
                       className={cn(
                         'text-[9px] sm:text-[10px] font-bold leading-none',
@@ -142,8 +153,8 @@ export function HourlyForecast({
                     )}
                     style={{ height: `${barH}px` }}
                   >
-                    {/* 추천 시간대 반짝임 */}
-                    {isBest && (
+                    {/* 추천 시간대 반짝임 — 어제는 제외 */}
+                    {isBest && !isPrevDay && (
                       <div
                         className="absolute inset-0 bg-white rounded-md"
                         style={{
@@ -159,24 +170,34 @@ export function HourlyForecast({
 
           {/* 시간 라벨 + 추천 도트 (고정 높이, 바와 분리) */}
           <div className="flex gap-[3px] sm:gap-1 mt-1.5">
-            {forecast.map(({ hour, isNextDay }, index) => {
-              const isNow = hour === currentHour && !isNextDay;
+            {forecast.map(({ hour, isNextDay, isPrevDay }, index) => {
+              const isToday = !isPrevDay && !isNextDay;
+              const isNow = isToday && hour === currentHour;
               const isSelected = selectedHour === hour;
-              const isBest = bestHours.includes(hour);
-              const showDayLabel = isNextDay && index > 0 && !forecast[index - 1].isNextDay;
+              const isBest = !isPrevDay && bestHours.includes(hour);
+
+              const prevItem = index > 0 ? forecast[index - 1] : null;
+              const showTodayLabel = isToday && prevItem?.isPrevDay;
+              const showNextDayLabel = isNextDay && prevItem && !prevItem.isNextDay;
+
               return (
-                <div key={`label-${isNextDay ? 'next' : 'today'}-${hour}`} className="flex-1 flex flex-col items-center gap-0.5">
+                <div key={`label-${isPrevDay ? 'prev' : isNextDay ? 'next' : 'today'}-${hour}`} className="flex-1 flex flex-col items-center gap-0.5">
                   <span
                     className={cn(
                       'text-center text-[9px] sm:text-[10px] leading-none h-3',
                       isSelected ? 'text-violet-600 font-semibold'
                         : isNow ? 'text-blue-600 font-semibold'
                         : isBest ? 'text-emerald-500 font-semibold'
-                        : showDayLabel ? 'text-gray-500 font-semibold'
+                        : (showTodayLabel || showNextDayLabel) ? 'text-gray-500 font-semibold'
+                        : isPrevDay ? 'text-gray-200'
                         : 'text-gray-300',
                     )}
                   >
-                    {showDayLabel ? '내일' : isSelected || isNow || isBest ? hour : hour % 3 === 0 ? hour : ''}
+                    {showTodayLabel ? '오늘'
+                      : showNextDayLabel ? '내일'
+                      : isSelected || isNow || isBest ? hour
+                      : hour % 3 === 0 ? hour
+                      : ''}
                   </span>
                   {isBest && (
                     <div className="w-1 h-1 rounded-full bg-emerald-400" />

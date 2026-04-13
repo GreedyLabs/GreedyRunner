@@ -15,7 +15,7 @@ import type {
 } from '../../domain/entities/airQuality';
 import type { Region } from '../../domain/entities/region';
 import { getRunningIndex } from '../../domain/useCases/getRunningIndex';
-import { getCurrentWeather, getHourlyWeather } from './weatherClient';
+import { getCurrentWeather, getHourlyWeather, type HourlyWeatherMap } from './weatherClient';
 
 const API_KEY = process.env.AIR_KOREA_API_KEY ?? '';
 const MSRS_BASE = 'https://apis.data.go.kr/B552584/MsrstnInfoInqireSvc';
@@ -277,7 +277,7 @@ function buildAirQualityData(
   stationName: string,
   measurements: StationMeasurement[],
   currentWeather: Awaited<ReturnType<typeof getCurrentWeather>> | null,
-  hourlyWeather: Map<number, Awaited<ReturnType<typeof getCurrentWeather>>> | null,
+  hourlyWeather: HourlyWeatherMap | null,
   fallback?: StationFallback,
 ): AirQualityData {
   // 기준 시각은 실제 최신 측정값의 시각으로 고정한다.
@@ -301,68 +301,77 @@ function buildAirQualityData(
   const currentRunningIndex = getRunningIndex(currentMetrics, currentWx, currentHour);
 
   // 현재 시간 ±12시간 예보 구성 (총 24시간)
-  // 주의 1: 에어코리아 API는 어제 늦은 시간 + 오늘 데이터를 섞어서 반환하므로,
-  //         미래 시간(hour > currentHour)에는 hourlyMap을 절대 사용하지 않음 (어제 데이터이기 때문)
-  // 주의 2: 현재 시각(hour === currentHour) 바는 카드 칩과 100% 동일해야 하므로
-  //         currentMetrics/currentWx/currentRunningIndex를 그대로 재사용한다.
-  // 주의 3: 단기예보(hourlyWeather)는 base_time 이후 시간만 반환하므로 과거 시간에 대해
-  //         undefined가 된다. weather를 넘기지 않으면 getRunningIndex가 대기질만 사용하는
-  //         3-factor 공식(pm25 50% + pm10 30% + o3 20%)으로 분기해, weather가 있는 바
-  //         (7-factor + 강수 force penalty)와 동일한 AQ에도 점수가 다르게 계산되어
-  //         바 간 비교가 일관되지 않게 된다. 특히 currentWx에 비·눈이 잡혀 있으면 현재 바만
-  //         30점 강제 감점을 받아 과거 바 대비 급격히 낮게 보인다.
-  //         → 오늘 구간에서 hourlyWeather에 해당 시간이 없으면 currentWx로 폴백해
-  //           모든 today 바가 동일한 7-factor 공식을 유지하도록 한다.
+  // 3구간: isPrevDay(rawHour < 0), today(0 <= rawHour < 24), isNextDay(rawHour >= 24)
+  //
+  // 대기질(metrics) 소스:
+  //   - 어제(isPrevDay): 예측 (현재값 기반)
+  //   - 오늘 과거~현재: hourlyMap 실측 > currentMetrics 폴백
+  //   - 오늘 미래 / 내일: 예측 (현재값 기반)
+  //   - 현재 시각 정확히: currentMetrics 고정 (카드 칩과 동일)
+  //
+  // 기상(weather) 소스:
+  //   - 어제: currentWx 폴백 (KMA에 과거 시간별 API 없음)
+  //   - 오늘: hourlyWeather.today > currentWx 폴백
+  //   - 내일: hourlyWeather.tomorrow (폴백 없음 — 데이터가 없으면 undefined)
+  //   - 현재 시각: currentWx 고정
   const startHour = currentHour - 12;
   const hourlyForecast = Array.from({ length: 24 }, (_, i) => {
     const rawHour = startHour + i;
     const hour = ((rawHour % 24) + 24) % 24; // 0~23으로 정규화
+    const isPrevDay = rawHour < 0;
     const isNextDay = rawHour >= 24;
-    const isCurrent = !isNextDay && hour === currentHour;
-    const isPastOrNowToday = !isNextDay && hour <= currentHour;
+    const isToday = !isPrevDay && !isNextDay;
+    const isCurrent = isToday && hour === currentHour;
+    const isTodayPast = isToday && hour < currentHour;
 
+    // 현재 시각 바: 카드 칩과 100% 동일한 값 재사용
     if (isCurrent) {
-      // 카드 칩과 동일한 값을 그대로 반환
       return {
         hour,
-        isNextDay,
+        isPrevDay: undefined,
+        isNextDay: undefined,
         airQuality: currentMetrics,
         weather: currentWx,
         runningIndex: currentRunningIndex,
       };
     }
 
+    // 대기질 결정
     let metrics: AirQualityMetrics;
-    if (isPastOrNowToday && hourlyMap.has(hour)) {
-      // 오늘 과거 시간 중 실측값이 있으면 사용
+    if (isTodayPast && hourlyMap.has(hour)) {
       metrics = hourlyMap.get(hour)!;
-    } else if (isPastOrNowToday) {
-      // 오늘 과거 시간인데 실측값이 없으면 현재값 사용
+    } else if (isTodayPast) {
       metrics = currentMetrics;
     } else {
-      // 미래 시간(오늘 이후 또는 내일)은 항상 예측
+      // 어제 / 오늘 미래 / 내일 → 예측
       metrics = predictMetrics(currentMetrics, hour);
     }
 
-    // weather 폴백: 주의 3 참조
-    const wx = !isNextDay ? hourlyWeather?.get(hour) : undefined;
-    const weatherInfo: WeatherInfo | undefined = wx
-      ? toWeatherInfo(wx)
-      : !isNextDay
-        ? currentWx
-        : undefined;
+    // 기상 결정
+    let weatherInfo: WeatherInfo | undefined;
+    if (isNextDay) {
+      const wx = hourlyWeather?.tomorrow.get(hour);
+      weatherInfo = wx ? toWeatherInfo(wx) : undefined;
+    } else {
+      // 어제 또는 오늘
+      const wx = hourlyWeather?.today.get(hour);
+      weatherInfo = wx ? toWeatherInfo(wx) : currentWx;
+    }
+
     return {
       hour,
-      isNextDay,
+      isPrevDay: isPrevDay || undefined,
+      isNextDay: isNextDay || undefined,
       airQuality: metrics,
       weather: weatherInfo,
       runningIndex: getRunningIndex(metrics, weatherInfo, hour),
     };
   });
 
-  // 최적 시간: 현재 이후 시간만, 점수 60 이상
+  // 최적 시간: 오늘 현재 이후 + 내일만 (어제 확실히 제외), 점수 60 이상
   const bestRunningHours = [...hourlyForecast]
     .filter((h) => {
+      if (h.isPrevDay) return false;
       const isFuture = h.isNextDay || h.hour > currentHour;
       return isFuture && h.runningIndex.score >= 60;
     })

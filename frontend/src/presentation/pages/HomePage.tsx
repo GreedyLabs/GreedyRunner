@@ -99,6 +99,7 @@ export function HomePage() {
             regionName={data.regionName}
             updatedAt={data.updatedAt}
             selectedHour={selectedHourData?.hour ?? null}
+            selectedDayLabel={selectedHourData?.isPrevDay ? '어제' : selectedHourData?.isNextDay ? '내일' : undefined}
             onResetHour={selectedHourData ? handleResetToCurrentData : undefined}
           />
           <HourlyForecast

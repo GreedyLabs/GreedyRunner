@@ -9,6 +9,7 @@ interface RunningIndexCardProps {
   regionName: string
   updatedAt: Date
   selectedHour: number | null
+  selectedDayLabel?: '어제' | '내일'
   onResetHour?: () => void
 }
 
@@ -57,6 +58,7 @@ export function RunningIndexCard({
   regionName,
   updatedAt,
   selectedHour,
+  selectedDayLabel,
   onResetHour,
 }: RunningIndexCardProps) {
   const config = STATUS_CONFIG[runningIndex.status]
@@ -67,8 +69,9 @@ export function RunningIndexCard({
   })
 
   const isHourSelected = selectedHour !== null
-  const timeLabel = isHourSelected ? `${selectedHour}시 예보` : `${formattedTime} 측정`
-  const questionLabel = isHourSelected ? `${selectedHour}시에 달려도 되나요?` : '지금 여기서 달려도 되나요?'
+  const dayPrefix = selectedDayLabel ? `${selectedDayLabel} ` : ''
+  const timeLabel = isHourSelected ? `${dayPrefix}${selectedHour}시 예보` : `${formattedTime} 측정`
+  const questionLabel = isHourSelected ? `${dayPrefix}${selectedHour}시에 달려도 되나요?` : '지금 여기서 달려도 되나요?'
 
   return (
     <div className="animate-slide-up">
