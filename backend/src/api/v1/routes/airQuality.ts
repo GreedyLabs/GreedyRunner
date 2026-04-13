@@ -5,6 +5,11 @@ import * as mockClient from '../../../infrastructure/apiClients/mockAirQualityCl
 
 const client = process.env.AIR_KOREA_API_KEY ? realClient : mockClient
 
+// ── 인메모리 캐시 (대기질 응답) ──────────────────────────────
+// 에어코리아 데이터는 1시간 단위 발표이므로 5분 캐시로 충분하다.
+const CACHE_TTL = 5 * 60 * 1000 // 5분
+const cache = new Map<string, { data: unknown; expiresAt: number }>()
+
 if (!process.env.AIR_KOREA_API_KEY) {
   console.warn('[air-quality] AIR_KOREA_API_KEY 미설정 → Mock 데이터 사용')
 }
@@ -56,7 +61,15 @@ airQualityRouter.get('/:regionId', async (req: Request, res: Response) => {
   const lng = coordsParsed.success ? coordsParsed.data.lng : undefined
 
   try {
+    const cacheKey = `${parsed.data.regionId}:${lat ?? ''}:${lng ?? ''}`
+    const cached = cache.get(cacheKey)
+    if (cached && cached.expiresAt > Date.now()) {
+      res.json(cached.data)
+      return
+    }
+
     const data = await client.getAirQuality(parsed.data.regionId, lat, lng)
+    cache.set(cacheKey, { data, expiresAt: Date.now() + CACHE_TTL })
     res.json(data)
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)

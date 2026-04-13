@@ -7,7 +7,6 @@ interface HourlyForecastProps {
   forecast: HourlyForecastType[];
   bestHours: number[];
   selectedHour: number | null;
-  updatedAt: Date;
   onHourSelect: (hourData: HourlyForecastType) => void;
 }
 
@@ -33,11 +32,8 @@ export function HourlyForecast({
   forecast,
   bestHours,
   selectedHour,
-  updatedAt,
   onHourSelect,
 }: HourlyForecastProps) {
-  // 측정 시각을 기준으로 '현재' 시간 판단 (백엔드의 currentHour와 일치)
-  const currentHour = updatedAt.getHours();
   const scrollRef = useRef<HTMLDivElement>(null);
   const currentBarRef = useRef<HTMLButtonElement>(null);
 
@@ -49,11 +45,10 @@ export function HourlyForecast({
     container.scrollTo({ left: scrollLeft, behavior: 'smooth' });
   }, [forecast]);
 
-  // bestHours는 미래 시간만 포함(어제 제외됨) — 안전하게 라벨 생성
   const bestHourLabel = (() => {
-    if (bestHours.length === 0) return '오늘은 좋은 시간대가 없어요';
+    if (bestHours.length === 0) return '추천 시간대가 없어요';
     return bestHours.map((h) => {
-      const item = forecast.find((f) => f.hour === h && !f.isPrevDay);
+      const item = forecast.find((f) => f.hour === h);
       const prefix = item?.isNextDay ? '내일 ' : '';
       return `${prefix}${h}시`;
     }).join(', ');
@@ -62,7 +57,7 @@ export function HourlyForecast({
   return (
     <Card className="animate-slide-up">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-bold text-gray-800 text-base">오늘의 러닝 타임라인</h3>
+        <h3 className="font-bold text-gray-800 text-base">러닝 타임라인</h3>
         <span className="text-xs text-gray-400">24시간 예보</span>
       </div>
 
@@ -77,7 +72,6 @@ export function HourlyForecast({
 
       {/* 바 차트 */}
       <div ref={scrollRef} className="overflow-x-auto -mx-1 px-1 pb-1">
-        {/* pt-7: 호버 툴팁이 바 위에 표시될 수 있도록 여유 공간 확보 */}
         <div style={{ minWidth: '540px' }} className="pt-7">
           {/* 바 영역 */}
           <div
@@ -85,29 +79,20 @@ export function HourlyForecast({
             style={{ height: BAR_MAX + 20 }}
           >
             {forecast.map((hourData, index) => {
-              const { hour, runningIndex, isNextDay, isPrevDay } = hourData;
-              const isToday = !isPrevDay && !isNextDay;
-              const isNow = isToday && hour === currentHour;
-              // bestHours는 백엔드에서 어제를 이미 제외하므로 hour만 매칭해도 안전
-              const isBest = !isPrevDay && bestHours.includes(hour);
+              const { hour, runningIndex, isNextDay } = hourData;
+              const isNow = index === 0;
+              const isBest = bestHours.includes(hour);
               const isSelected = selectedHour === hour;
-              // 어제 전체 + 오늘 과거 = 흐리게
-              const isPast = isPrevDay || (isToday && hour < currentHour && !isSelected);
               const color = STATUS_COLOR[runningIndex.status];
               const barH = Math.max(4, (runningIndex.score / 100) * BAR_MAX);
 
-              // 일자 경계 구분선: 어제→오늘, 오늘→내일
               const prevItem = index > 0 ? forecast[index - 1] : null;
-              const showDayDivider =
-                (isToday && prevItem?.isPrevDay) ||
-                (isNextDay && prevItem && !prevItem.isNextDay);
-
-              // 툴팁 접두사
-              const dayPrefix = isPrevDay ? '어제 ' : isNextDay ? '내일 ' : '';
+              const showDayDivider = isNextDay && prevItem && !prevItem.isNextDay;
+              const dayPrefix = isNextDay ? '내일 ' : '';
 
               return (
                 <button
-                  key={`${isPrevDay ? 'prev' : isNextDay ? 'next' : 'today'}-${hour}`}
+                  key={`${isNextDay ? 'next' : 'today'}-${hour}`}
                   ref={isNow ? currentBarRef : undefined}
                   type="button"
                   aria-label={`${dayPrefix}${hour}시 러닝지수 ${runningIndex.score}점`}
@@ -125,8 +110,8 @@ export function HourlyForecast({
                     {dayPrefix}{hour}시 · {runningIndex.score}점
                   </div>
 
-                  {/* 점수 (현재/선택/추천 시간만 — 어제는 표시 안 함) */}
-                  {!isPrevDay && (isNow || isSelected || isBest) && (
+                  {/* 점수 (현재/선택/추천 시간) */}
+                  {(isNow || isSelected || isBest) && (
                     <span
                       className={cn(
                         'text-[9px] sm:text-[10px] font-bold leading-none',
@@ -147,19 +132,14 @@ export function HourlyForecast({
                       isSelected && 'ring-1.5 ring-violet-500 ring-offset-1 brightness-110',
                       isNow && !isSelected && 'ring-1.5 ring-blue-500 ring-offset-1',
                       isBest && !isSelected && !isNow && 'shadow-[0_0_6px_rgba(16,185,129,0.6)]',
-                      isPast && !isBest && 'opacity-35',
-                      isPast && isBest && 'opacity-60',
                       !isNow && !isSelected && 'group-hover:opacity-80 group-hover:brightness-110',
                     )}
                     style={{ height: `${barH}px` }}
                   >
-                    {/* 추천 시간대 반짝임 — 어제는 제외 */}
-                    {isBest && !isPrevDay && (
+                    {isBest && (
                       <div
                         className="absolute inset-0 bg-white rounded-md"
-                        style={{
-                          animation: 'shimmer 1.5s ease-in-out infinite',
-                        }}
+                        style={{ animation: 'shimmer 1.5s ease-in-out infinite' }}
                       />
                     )}
                   </div>
@@ -168,33 +148,29 @@ export function HourlyForecast({
             })}
           </div>
 
-          {/* 시간 라벨 + 추천 도트 (고정 높이, 바와 분리) */}
+          {/* 시간 라벨 */}
           <div className="flex gap-[3px] sm:gap-1 mt-1.5">
-            {forecast.map(({ hour, isNextDay, isPrevDay }, index) => {
-              const isToday = !isPrevDay && !isNextDay;
-              const isNow = isToday && hour === currentHour;
+            {forecast.map(({ hour, isNextDay }, index) => {
+              const isNow = index === 0;
               const isSelected = selectedHour === hour;
-              const isBest = !isPrevDay && bestHours.includes(hour);
+              const isBest = bestHours.includes(hour);
 
               const prevItem = index > 0 ? forecast[index - 1] : null;
-              const showTodayLabel = isToday && prevItem?.isPrevDay;
               const showNextDayLabel = isNextDay && prevItem && !prevItem.isNextDay;
 
               return (
-                <div key={`label-${isPrevDay ? 'prev' : isNextDay ? 'next' : 'today'}-${hour}`} className="flex-1 flex flex-col items-center gap-0.5">
+                <div key={`label-${isNextDay ? 'next' : 'today'}-${hour}`} className="flex-1 flex flex-col items-center gap-0.5">
                   <span
                     className={cn(
                       'text-center text-[9px] sm:text-[10px] leading-none h-3',
                       isSelected ? 'text-violet-600 font-semibold'
                         : isNow ? 'text-blue-600 font-semibold'
                         : isBest ? 'text-emerald-500 font-semibold'
-                        : (showTodayLabel || showNextDayLabel) ? 'text-gray-500 font-semibold'
-                        : isPrevDay ? 'text-gray-200'
+                        : showNextDayLabel ? 'text-gray-500 font-semibold'
                         : 'text-gray-300',
                     )}
                   >
-                    {showTodayLabel ? '오늘'
-                      : showNextDayLabel ? '내일'
+                    {showNextDayLabel ? '내일'
                       : isSelected || isNow || isBest ? hour
                       : hour % 3 === 0 ? hour
                       : ''}

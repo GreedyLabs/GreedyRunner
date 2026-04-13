@@ -4,31 +4,36 @@ import { RunningIndexCard } from '../components/shared/RunningIndexCard'
 import { HourlyForecast } from '../components/shared/HourlyForecast'
 import { AirQualityDetails } from '../components/shared/AirQualityDetails'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
-import { useAirQuality } from '../../application/hooks/useAirQuality'
-import { useLocation } from '../../application/hooks/useLocation'
 import type { Region } from '../../domain/entities/region.types'
-import type { HourlyForecast as HourlyForecastType } from '../../domain/entities/airQuality.types'
+import type { AirQualityData, HourlyForecast as HourlyForecastType } from '../../domain/entities/airQuality.types'
 
-export function HomePage() {
-  const { data, isLoading, error, fetchByRegion } = useAirQuality()
-  const { region: locatedRegion, isLocating, error: locationError, locateMe } = useLocation()
+interface HomePageProps {
+  data: AirQualityData | null
+  isLoading: boolean
+  error: string | null
+  locatedRegion: Region | null
+  isLocating: boolean
+  locationError: string | null
+  onLocateMe: () => void
+  onRegionSelect: (region: Region) => void
+}
+
+export function HomePage({
+  data,
+  isLoading,
+  error,
+  locatedRegion,
+  isLocating,
+  locationError,
+  onLocateMe,
+  onRegionSelect,
+}: HomePageProps) {
   const [selectedHourData, setSelectedHourData] = useState<HourlyForecastType | null>(null)
-
-  // 위치 기반 지역이 확인되면 자동 조회 (좌표 포함)
-  useEffect(() => {
-    if (locatedRegion) {
-      fetchByRegion(locatedRegion.id, locatedRegion.lat, locatedRegion.lng)
-    }
-  }, [locatedRegion, fetchByRegion])
 
   // 새 데이터 로드 시 선택 초기화
   useEffect(() => {
     setSelectedHourData(null)
   }, [data])
-
-  function handleRegionSelect(region: Region) {
-    fetchByRegion(region.id, region.lat, region.lng)
-  }
 
   function handleHourSelect(hourData: HourlyForecastType) {
     setSelectedHourData(hourData)
@@ -49,8 +54,8 @@ export function HomePage() {
     <>
       {/* 지역 검색 */}
       <RegionSearch
-        onRegionSelect={handleRegionSelect}
-        onLocateMe={locateMe}
+        onRegionSelect={onRegionSelect}
+        onLocateMe={onLocateMe}
         isLocating={isLocating}
         locationError={locationError}
         selectedRegion={selectedRegion}
@@ -99,14 +104,13 @@ export function HomePage() {
             regionName={data.regionName}
             updatedAt={data.updatedAt}
             selectedHour={selectedHourData?.hour ?? null}
-            selectedDayLabel={selectedHourData?.isPrevDay ? '어제' : selectedHourData?.isNextDay ? '내일' : undefined}
+            selectedDayLabel={selectedHourData?.isNextDay ? '내일' : undefined}
             onResetHour={selectedHourData ? handleResetToCurrentData : undefined}
           />
           <HourlyForecast
             forecast={data.hourlyForecast}
             bestHours={data.bestRunningHours}
             selectedHour={selectedHourData?.hour ?? null}
-            updatedAt={data.updatedAt}
             onHourSelect={handleHourSelect}
           />
           <AirQualityDetails metrics={displayAirQuality} weather={displayWeather} />

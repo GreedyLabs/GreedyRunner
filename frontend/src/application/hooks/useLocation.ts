@@ -3,7 +3,7 @@ import type { Region } from '../../domain/entities/region.types'
 import { getRegionByCoords } from '../../infrastructure/api/airQualityApi'
 
 const CACHE_KEY = 'gr_location'
-const CACHE_TTL = 30 * 60 * 1000 // 30분
+const CACHE_TTL = 60 * 60 * 1000 // 1시간 — 위치는 자주 안 바뀌므로 TTL 여유 있게
 
 interface CachedLocation {
   region: Region

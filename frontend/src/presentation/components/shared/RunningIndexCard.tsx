@@ -9,7 +9,7 @@ interface RunningIndexCardProps {
   regionName: string
   updatedAt: Date
   selectedHour: number | null
-  selectedDayLabel?: '어제' | '내일'
+  selectedDayLabel?: '내일'
   onResetHour?: () => void
 }
 
@@ -147,15 +147,19 @@ export function RunningIndexCard({
                 {weather.precipitation !== 'none' && (
                   <WeatherChip label="강수" value={PRECIP_LABEL[weather.precipitation]} icon={PRECIP_ICON[weather.precipitation]} dot="bg-red-300" />
                 )}
+                {weather.uvIndex != null && (
+                  <WeatherChip label="UV" value={String(weather.uvIndex)} icon={weather.uvIndex >= 8 ? '🔥' : weather.uvIndex >= 6 ? '☀️' : '🌤️'} dot={weather.uvIndex <= 2 ? 'bg-emerald-300' : weather.uvIndex <= 5 ? 'bg-amber-300' : weather.uvIndex <= 7 ? 'bg-orange-300' : 'bg-red-300'} />
+                )}
               </>
             )}
+          </div>
+
           {/* 추천 옷차림 */}
           {weather && (
             <div className="mt-4 sm:mt-5 pt-4 border-t border-white/15">
               <RunnerAvatar weather={weather} />
             </div>
           )}
-          </div>
         </div>
       </div>
     </div>

@@ -34,12 +34,21 @@ export function getRunningIndex(
   weather?: WeatherInfo,
   hour?: number,
 ): RunningIndex {
-  const score = calculateScore(metrics, weather, hour)
+  let score = calculateScore(metrics, weather, hour)
+
+  // 야간 감점 (23~04시) — 시야 불량·안전 위험으로 추천에서 밀려나도록
+  const isNight = hour !== undefined && (hour >= 23 || hour < 4)
+  if (isNight) {
+    score = Math.max(0, score - 20)
+  }
+
   const status = scoreToStatus(score)
 
-  // 비/눈이면 메시지 오버라이드
+  // 메시지 오버라이드: 야간 > 강수 > 기본
   let message = STATUS_MESSAGES[status]
-  if (weather && weather.precipitation !== 'none') {
+  if (isNight) {
+    message = '야간 시간대입니다. 시야 확보가 어려워 주의가 필요합니다.'
+  } else if (weather && weather.precipitation !== 'none') {
     const precipLabel = weather.precipitation === 'rain' ? '비' : weather.precipitation === 'snow' ? '눈' : '진눈깨비'
     message = `현재 ${precipLabel}가 내리고 있어 실내 운동을 추천합니다.`
   }
@@ -69,16 +78,21 @@ function calculateScore(m: AirQualityMetrics, w?: WeatherInfo, hour?: number): n
   const humP    = humidityPenalty(w.humidity)
   const windP   = windSpeedPenalty(w.windSpeed)
   const precipP = precipitationPenalty(w.precipitation)
+  const uvP     = w.uvIndex != null ? uvPenalty(w.uvIndex, hour) : null
 
   // 대기질 70% + 기상 30%
-  const basePenalty =
-    pm25P * 0.35 + pm10P * 0.20 + o3P * 0.15 +
-    tempP * 0.12 + humP  * 0.08 + windP * 0.05 + precipP * 0.05
+  // UV 데이터가 있으면 기온·습도에서 5%를 덜어 UV에 배분
+  const basePenalty = uvP != null
+    ? pm25P * 0.35 + pm10P * 0.20 + o3P * 0.15 +
+      tempP * 0.10 + humP  * 0.05 + windP * 0.05 + precipP * 0.05 + uvP * 0.05
+    : pm25P * 0.35 + pm10P * 0.20 + o3P * 0.15 +
+      tempP * 0.12 + humP  * 0.08 + windP * 0.05 + precipP * 0.05
 
-  const compoundPenalty = applyCompoundPenalty(
-    basePenalty,
-    [pm25P, pm10P, o3P, tempP, humP, windP, precipP]
-  )
+  const allPenalties = uvP != null
+    ? [pm25P, pm10P, o3P, tempP, humP, windP, precipP, uvP]
+    : [pm25P, pm10P, o3P, tempP, humP, windP, precipP]
+
+  const compoundPenalty = applyCompoundPenalty(basePenalty, allPenalties)
 
   // 강수 강제 감점 (가중치와 별개로 적용)
   const precipBonus = precipitationForcePenalty(w.precipitation)
@@ -160,6 +174,22 @@ function windSpeedPenalty(ws: number): number {
   if (ws <= 7) return ((ws - 3) / 4) * 20
   if (ws <= 10) return 20 + ((ws - 7) / 3) * 30
   return 50 + ((Math.min(ws, 15) - 10) / 5) * 50
+}
+
+/**
+ * 자외선지수 페널티 (0~100).
+ * 야간(20~06시)에는 UV가 물리적으로 0이므로 페널티를 0으로 고정한다.
+ * 등급: 0~2 낮음, 3~5 보통, 6~7 높음, 8~10 매우높음, 11+ 위험
+ */
+function uvPenalty(uv: number, hour?: number): number {
+  // 야간 → UV 물리적 0
+  if (hour !== undefined && (hour >= 20 || hour < 6)) return 0
+
+  if (uv <= 2) return 0
+  if (uv <= 5) return ((uv - 2) / 3) * 20          // 0~20
+  if (uv <= 7) return 20 + ((uv - 5) / 2) * 30     // 20~50
+  if (uv <= 10) return 50 + ((uv - 7) / 3) * 30    // 50~80
+  return 100                                         // 11+
 }
 
 /** 비/눈이면 큰 감점 */

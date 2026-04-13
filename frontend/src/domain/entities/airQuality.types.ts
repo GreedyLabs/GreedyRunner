@@ -15,6 +15,7 @@ export interface WeatherInfo {
   humidity: number             // 습도 (%)
   windSpeed: number            // 풍속 (m/s)
   precipitation: PrecipitationType
+  uvIndex?: number             // 자외선지수 (0~15+, 없으면 undefined)
 }
 
 export interface RunningIndex {
@@ -27,7 +28,6 @@ export interface RunningIndex {
 
 export interface HourlyForecast {
   hour: number           // 0–23
-  isPrevDay?: boolean    // true이면 전날
   isNextDay?: boolean    // true이면 다음 날
   runningIndex: RunningIndex
   airQuality: AirQualityMetrics

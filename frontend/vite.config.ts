@@ -6,7 +6,10 @@ import sitemap from 'vite-plugin-sitemap';
 export default defineConfig({
   plugins: [
     react(),
-    sitemap({ hostname: 'https://run.greedylabs.kr' }),
+    sitemap({
+      hostname: 'https://run.greedylabs.kr',
+      dynamicRoutes: ['/outfit'],
+    }),
   ],
   server: {
     allowedHosts: ['localhost', 'filial-janett-intromittent.ngrok-free.dev'],

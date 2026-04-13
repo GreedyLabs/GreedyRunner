@@ -16,6 +16,7 @@ import type {
 import type { Region } from '../../domain/entities/region';
 import { getRunningIndex } from '../../domain/useCases/getRunningIndex';
 import { getCurrentWeather, getHourlyWeather, type HourlyWeatherMap } from './weatherClient';
+import { getUVIndex, type UVData } from './uvIndexClient';
 
 const API_KEY = process.env.AIR_KOREA_API_KEY ?? '';
 const MSRS_BASE = 'https://apis.data.go.kr/B552584/MsrstnInfoInqireSvc';
@@ -170,13 +171,15 @@ export async function getAirQuality(
   lat?: number,
   lng?: number,
 ): Promise<AirQualityData> {
-  const { stationName, measurements, fallback } = await resolveStationWithFallback(regionId);
-
-  // 기상 병렬 호출
   const hasWeatherKey = !!process.env.KMA_API_KEY;
+  const hasUVKey = !!process.env.UV_API_KEY;
   const hasCoords = lat != null && lng != null;
 
-  const [currentWeather, hourlyWeather] = await Promise.all([
+  // 측정소 조회 + 기상/UV를 **동시에** 시작
+  // 기존: await 측정소 → await 기상 (직렬, 합산 시간)
+  // 변경: Promise.all로 병렬 (가장 느린 쪽 기준)
+  const [stationResult, currentWeather, hourlyWeather, uvData] = await Promise.all([
+    resolveStationWithFallback(regionId),
     hasWeatherKey && hasCoords
       ? getCurrentWeather(lat, lng).catch((err) => {
           console.warn('[weather]', err);
@@ -189,9 +192,16 @@ export async function getAirQuality(
           return null;
         })
       : Promise.resolve(null),
+    hasUVKey && hasCoords
+      ? getUVIndex(lat, lng).catch((err) => {
+          console.warn('[uv]', err);
+          return null;
+        })
+      : Promise.resolve(null),
   ]);
 
-  return buildAirQualityData(stationName, measurements, currentWeather, hourlyWeather, fallback);
+  const { stationName, measurements, fallback } = stationResult;
+  return buildAirQualityData(stationName, measurements, currentWeather, hourlyWeather, uvData, fallback);
 }
 
 // ── 내부 유틸 ──────────────────────────────────────────────
@@ -207,7 +217,8 @@ function isMeasurementFaulty(measurements: StationMeasurement[]): boolean {
 
 /**
  * 측정소를 결정하고 측정 데이터를 반환.
- * 1순위 측정소의 데이터가 비정상이면 근처 다른 측정소로 폴백 (최대 3곳).
+ * 모든 후보 측정소를 **병렬**로 조회한 뒤 우선순위대로 정상 데이터를 선택한다.
+ * (기존 직렬 루프 대비 최대 3배 빠름)
  */
 async function resolveStationWithFallback(
   regionId: string,
@@ -218,9 +229,17 @@ async function resolveStationWithFallback(
 }> {
   const stationNames = await resolveStationCandidates(regionId);
 
-  for (let i = 0; i < stationNames.length; i++) {
-    const name = stationNames[i];
-    const measurements = await getStationMeasurements(name);
+  // 모든 후보를 병렬로 조회
+  const results = await Promise.all(
+    stationNames.map(async (name) => ({
+      name,
+      measurements: await getStationMeasurements(name).catch(() => [] as StationMeasurement[]),
+    })),
+  );
+
+  // 우선순위대로 정상 데이터 선택
+  for (let i = 0; i < results.length; i++) {
+    const { name, measurements } = results[i];
     if (!isMeasurementFaulty(measurements)) {
       if (i > 0) {
         console.log(`[air] ${stationNames[0]} → ${name} 측정소로 폴백 완료`);
@@ -236,12 +255,11 @@ async function resolveStationWithFallback(
       }
       return { stationName: name, measurements };
     }
-    console.warn(`[air] ${name} 측정소 데이터 비정상 (PM2.5·PM10 = 0), 다음 측정소 시도`);
+    console.warn(`[air] ${name} 측정소 데이터 비정상 (PM2.5·PM10 = 0)`);
   }
 
   // 모든 측정소가 비정상이면 1순위 데이터라도 반환
-  const fallbackMeasurements = await getStationMeasurements(stationNames[0]);
-  return { stationName: stationNames[0], measurements: fallbackMeasurements };
+  return { stationName: results[0].name, measurements: results[0].measurements };
 }
 
 /** regionId에서 측정소 후보 목록을 반환 (최대 3곳) */
@@ -264,12 +282,13 @@ async function resolveStationCandidates(regionId: string): Promise<string[]> {
   throw new Error(`알 수 없는 regionId 형식: ${regionId}`);
 }
 
-function toWeatherInfo(w: Awaited<ReturnType<typeof getCurrentWeather>>): WeatherInfo {
+function toWeatherInfo(w: Awaited<ReturnType<typeof getCurrentWeather>>, uvIndex?: number): WeatherInfo {
   return {
     temperature: w.temperature,
     humidity: w.humidity,
     windSpeed: w.windSpeed,
     precipitation: w.precipitation,
+    uvIndex,
   };
 }
 
@@ -278,6 +297,7 @@ function buildAirQualityData(
   measurements: StationMeasurement[],
   currentWeather: Awaited<ReturnType<typeof getCurrentWeather>> | null,
   hourlyWeather: HourlyWeatherMap | null,
+  uvData: UVData | null,
   fallback?: StationFallback,
 ): AirQualityData {
   // 기준 시각은 실제 최신 측정값의 시각으로 고정한다.
@@ -297,38 +317,23 @@ function buildAirQualityData(
 
   // 현재(=최신 측정) 데이터
   const currentMetrics = latestItem ? parseMeasurement(latestItem) : defaultMetrics();
-  const currentWx = currentWeather ? toWeatherInfo(currentWeather) : undefined;
+  const currentUV = uvData?.current;
+  const currentWx = currentWeather ? toWeatherInfo(currentWeather, currentUV) : undefined;
   const currentRunningIndex = getRunningIndex(currentMetrics, currentWx, currentHour);
 
-  // 현재 시간 ±12시간 예보 구성 (총 24시간)
-  // 3구간: isPrevDay(rawHour < 0), today(0 <= rawHour < 24), isNextDay(rawHour >= 24)
-  //
-  // 대기질(metrics) 소스:
-  //   - 어제(isPrevDay): 예측 (현재값 기반)
-  //   - 오늘 과거~현재: hourlyMap 실측 > currentMetrics 폴백
-  //   - 오늘 미래 / 내일: 예측 (현재값 기반)
-  //   - 현재 시각 정확히: currentMetrics 고정 (카드 칩과 동일)
-  //
-  // 기상(weather) 소스:
-  //   - 어제: currentWx 폴백 (KMA에 과거 시간별 API 없음)
-  //   - 오늘: hourlyWeather.today > currentWx 폴백
-  //   - 내일: hourlyWeather.tomorrow (폴백 없음 — 데이터가 없으면 undefined)
-  //   - 현재 시각: currentWx 고정
-  const startHour = currentHour - 12;
+  // 현재 시각부터 +24시간 예보
+  // 모든 바가 미래(또는 현재)이므로 과거 폴백 문제가 없다.
+  // 단기예보(hourlyWeather)는 발표 시각 이후 데이터를 포함하므로
+  // 거의 모든 바에 실제 기상 데이터가 존재한다.
   const hourlyForecast = Array.from({ length: 24 }, (_, i) => {
-    const rawHour = startHour + i;
-    const hour = ((rawHour % 24) + 24) % 24; // 0~23으로 정규화
-    const isPrevDay = rawHour < 0;
+    const rawHour = currentHour + i;
+    const hour = rawHour % 24;
     const isNextDay = rawHour >= 24;
-    const isToday = !isPrevDay && !isNextDay;
-    const isCurrent = isToday && hour === currentHour;
-    const isTodayPast = isToday && hour < currentHour;
 
-    // 현재 시각 바: 카드 칩과 100% 동일한 값 재사용
-    if (isCurrent) {
+    // 현재 시각 바(i===0): 카드 칩과 100% 동일한 값 재사용
+    if (i === 0) {
       return {
         hour,
-        isPrevDay: undefined,
         isNextDay: undefined,
         airQuality: currentMetrics,
         weather: currentWx,
@@ -336,31 +341,20 @@ function buildAirQualityData(
       };
     }
 
-    // 대기질 결정
-    let metrics: AirQualityMetrics;
-    if (isTodayPast && hourlyMap.has(hour)) {
-      metrics = hourlyMap.get(hour)!;
-    } else if (isTodayPast) {
-      metrics = currentMetrics;
-    } else {
-      // 어제 / 오늘 미래 / 내일 → 예측
-      metrics = predictMetrics(currentMetrics, hour);
-    }
+    // 대기질: 미래이므로 항상 예측
+    const metrics = predictMetrics(currentMetrics, hour);
 
-    // 기상 결정
-    let weatherInfo: WeatherInfo | undefined;
-    if (isNextDay) {
-      const wx = hourlyWeather?.tomorrow.get(hour);
-      weatherInfo = wx ? toWeatherInfo(wx) : undefined;
-    } else {
-      // 어제 또는 오늘
-      const wx = hourlyWeather?.today.get(hour);
-      weatherInfo = wx ? toWeatherInfo(wx) : currentWx;
-    }
+    // UV
+    const hourUV = uvData?.hourly.get(hour) ?? currentUV;
+
+    // 기상: 오늘 또는 내일 단기예보
+    const wx = isNextDay
+      ? hourlyWeather?.tomorrow.get(hour)
+      : hourlyWeather?.today.get(hour);
+    const weatherInfo = wx ? toWeatherInfo(wx, hourUV) : currentWx;
 
     return {
       hour,
-      isPrevDay: isPrevDay || undefined,
       isNextDay: isNextDay || undefined,
       airQuality: metrics,
       weather: weatherInfo,
@@ -368,13 +362,9 @@ function buildAirQualityData(
     };
   });
 
-  // 최적 시간: 오늘 현재 이후 + 내일만 (어제 확실히 제외), 점수 60 이상
+  // 최적 시간: 현재 이후, 점수 60 이상
   const bestRunningHours = [...hourlyForecast]
-    .filter((h) => {
-      if (h.isPrevDay) return false;
-      const isFuture = h.isNextDay || h.hour > currentHour;
-      return isFuture && h.runningIndex.score >= 60;
-    })
+    .filter((h) => h.hour !== currentHour && h.runningIndex.score >= 60)
     .sort((a, b) => b.runningIndex.score - a.runningIndex.score)
     .slice(0, 3)
     .sort((a, b) => {

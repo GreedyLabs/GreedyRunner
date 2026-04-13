@@ -1,6 +1,13 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import type { AirQualityData } from '../../domain/entities/airQuality.types'
 import { getAirQualityByRegion } from '../../infrastructure/api/airQualityApi'
+
+const CACHE_TTL = 5 * 60 * 1000 // 5분
+
+interface CacheEntry {
+  data: AirQualityData
+  expiresAt: number
+}
 
 interface UseAirQualityState {
   data: AirQualityData | null
@@ -19,11 +26,20 @@ export function useAirQuality(): UseAirQualityReturn {
     isLoading: false,
     error: null,
   })
+  const cacheRef = useRef<Map<string, CacheEntry>>(new Map())
 
   const fetchByRegion = useCallback(async (regionId: string, lat?: number, lng?: number) => {
+    const cacheKey = `${regionId}:${lat ?? ''}:${lng ?? ''}`
+    const cached = cacheRef.current.get(cacheKey)
+    if (cached && cached.expiresAt > Date.now()) {
+      setState({ data: cached.data, isLoading: false, error: null })
+      return
+    }
+
     setState(prev => ({ ...prev, isLoading: true, error: null }))
     try {
       const data = await getAirQualityByRegion(regionId, lat, lng)
+      cacheRef.current.set(cacheKey, { data, expiresAt: Date.now() + CACHE_TTL })
       setState({ data, isLoading: false, error: null })
     } catch {
       setState(prev => ({

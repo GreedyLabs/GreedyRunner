@@ -21,11 +21,11 @@ export interface WeatherInfo {
   humidity: number             // 습도 (%)
   windSpeed: number            // 풍속 (m/s)
   precipitation: 'none' | 'rain' | 'snow' | 'sleet'
+  uvIndex?: number             // 자외선지수 (0~15+, 없으면 undefined)
 }
 
 export interface HourlyForecast {
   hour: number
-  isPrevDay?: boolean
   isNextDay?: boolean
   airQuality: AirQualityMetrics
   weather?: WeatherInfo
