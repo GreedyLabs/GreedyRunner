@@ -15,15 +15,15 @@ interface RunningIndexCardProps {
 
 const STATUS_CONFIG = {
   great: {
-    bg: 'from-emerald-400 to-emerald-600',
-    ring: 'ring-emerald-300',
+    bg: 'from-blue-400 to-blue-600',
+    ring: 'ring-blue-300',
     icon: '🏃',
     answer: '달려도 됩니다!',
     answerColor: 'text-white',
   },
   good: {
-    bg: 'from-blue-400 to-blue-600',
-    ring: 'ring-blue-300',
+    bg: 'from-emerald-400 to-emerald-600',
+    ring: 'ring-emerald-300',
     icon: '👟',
     answer: '달리기 좋아요',
     answerColor: 'text-white',

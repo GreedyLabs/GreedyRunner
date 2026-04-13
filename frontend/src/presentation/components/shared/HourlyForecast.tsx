@@ -16,8 +16,8 @@ interface HourlyForecastProps {
 }
 
 const STATUS_COLOR = {
-  great: { bar: 'bg-emerald-400', text: 'text-emerald-600' },
-  good: { bar: 'bg-blue-400', text: 'text-blue-600' },
+  great: { bar: 'bg-blue-400', text: 'text-blue-600' },
+  good: { bar: 'bg-emerald-400', text: 'text-emerald-600' },
   caution: { bar: 'bg-amber-400', text: 'text-amber-600' },
   bad: { bar: 'bg-orange-400', text: 'text-orange-600' },
   worst: { bar: 'bg-red-400', text: 'text-red-600' },
