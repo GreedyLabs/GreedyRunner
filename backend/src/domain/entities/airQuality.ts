@@ -48,5 +48,5 @@ export interface AirQualityData {
     runningIndex: RunningIndex
   }
   hourlyForecast: HourlyForecast[]
-  bestRunningHours: number[]
+  bestRunningHours: Array<{ hour: number; isNextDay: boolean }>
 }

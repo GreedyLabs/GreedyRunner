@@ -50,5 +50,5 @@ export interface AirQualityData {
     runningIndex: RunningIndex
   }
   hourlyForecast: HourlyForecast[]
-  bestRunningHours: number[]   // 오늘 달리기 좋은 시간대 (hour)
+  bestRunningHours: Array<{ hour: number; isNextDay: boolean }>
 }

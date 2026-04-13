@@ -3,9 +3,14 @@ import { Card } from '../ui/Card';
 import type { HourlyForecast as HourlyForecastType } from '../../../domain/entities/airQuality.types';
 import { cn } from '../../../lib/cn';
 
+interface BestHour {
+  hour: number;
+  isNextDay: boolean;
+}
+
 interface HourlyForecastProps {
   forecast: HourlyForecastType[];
-  bestHours: number[];
+  bestHours: BestHour[];
   selectedHour: number | null;
   onHourSelect: (hourData: HourlyForecastType) => void;
 }
@@ -45,8 +50,12 @@ export function HourlyForecast({
     container.scrollTo({ left: scrollLeft, behavior: 'smooth' });
   }, [forecast]);
 
+  function isBestHour(hour: number, isNextDay?: boolean): boolean {
+    return bestHours.some((b) => b.hour === hour && b.isNextDay === !!isNextDay);
+  }
+
   const bestHourLabel = bestHours.length > 0
-    ? bestHours.map((h) => `${h}시`).join(', ')
+    ? bestHours.map((b) => `${b.isNextDay ? '내일 ' : ''}${b.hour}시`).join(', ')
     : null;
 
   return (
@@ -83,7 +92,7 @@ export function HourlyForecast({
             {forecast.map((hourData, index) => {
               const { hour, runningIndex, isNextDay } = hourData;
               const isNow = index === 0;
-              const isBest = bestHours.includes(hour);
+              const isBest = isBestHour(hour, isNextDay);
               const isSelected = selectedHour === hour;
               const color = STATUS_COLOR[runningIndex.status];
               const barH = Math.max(4, (runningIndex.score / 100) * BAR_MAX);
@@ -155,7 +164,7 @@ export function HourlyForecast({
             {forecast.map(({ hour, isNextDay }, index) => {
               const isNow = index === 0;
               const isSelected = selectedHour === hour;
-              const isBest = bestHours.includes(hour);
+              const isBest = isBestHour(hour, isNextDay);
 
               const prevItem = index > 0 ? forecast[index - 1] : null;
               const showNextDayLabel = isNextDay && prevItem && !prevItem.isNextDay;

@@ -71,11 +71,11 @@ export async function getAirQuality(regionId: string, _lat?: number, _lng?: numb
   })
 
   const bestRunningHours = [...hourlyForecast]
-    .filter(h => h.runningIndex.score >= 60)
+    .filter(h => h.runningIndex.score >= 65)
     .sort((a, b) => b.runningIndex.score - a.runningIndex.score)
     .slice(0, 3)
-    .map(h => h.hour)
-    .sort((a, b) => a - b)
+    .sort((a, b) => a.hour - b.hour)
+    .map(h => ({ hour: h.hour, isNextDay: false }))
 
   return {
     regionName: region.name,

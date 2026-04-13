@@ -362,13 +362,23 @@ function buildAirQualityData(
     };
   });
 
-  // 최적 시간: 오늘 이내(isNextDay 아닌) 현재 이후, 점수 65 이상
+  // 최적 시간: 점수 65 이상, 현재 시각 제외
+  // 22시 이전: 오늘 이내만 추천
+  // 22시 이후: 오늘 남은 시간이 부족하므로 내일까지 포함
+  const includeNextDay = currentHour >= 22;
   const bestRunningHours = [...hourlyForecast]
-    .filter((h) => !h.isNextDay && h.hour !== currentHour && h.runningIndex.score >= 65)
+    .filter((h) => {
+      if (h.hour === currentHour && !h.isNextDay) return false;
+      if (!includeNextDay && h.isNextDay) return false;
+      return h.runningIndex.score >= 65;
+    })
     .sort((a, b) => b.runningIndex.score - a.runningIndex.score)
     .slice(0, 3)
-    .sort((a, b) => a.hour - b.hour)
-    .map((h) => h.hour);
+    .sort((a, b) => {
+      if (a.isNextDay !== b.isNextDay) return a.isNextDay ? 1 : -1;
+      return a.hour - b.hour;
+    })
+    .map((h) => ({ hour: h.hour, isNextDay: !!h.isNextDay }));
 
   return {
     regionName: fallback ? `${fallback.fallbackStation} 측정소` : `${stationName} 측정소`,
