@@ -159,13 +159,18 @@ function temperaturePenalty(temp: number): number {
   return 100  // 영하 or 35°C 이상
 }
 
-/** 습도 최적: 40~60%, 너무 높거나 낮으면 감점 */
+/**
+ * 습도 최적: 40~60%
+ * 저습(건조)은 목·기도 자극이 있지만 체온 조절에는 오히려 유리하므로 감점을 낮게 잡는다.
+ * 고습은 땀 증발이 안 돼 열사병 위험이 커지므로 감점을 크게 잡는다.
+ */
 function humidityPenalty(hum: number): number {
   if (hum >= 40 && hum <= 60) return 0
-  if (hum >= 30 && hum < 40) return ((40 - hum) / 10) * 20
-  if (hum > 60 && hum <= 80) return ((hum - 60) / 20) * 30
-  if (hum > 80) return 30 + ((Math.min(hum, 100) - 80) / 20) * 70
-  return 30 // 30% 미만
+  if (hum >= 30 && hum < 40) return ((40 - hum) / 10) * 10   // 0~10 (경미)
+  if (hum >= 20 && hum < 30) return 10 + ((30 - hum) / 10) * 10 // 10~20 (건조)
+  if (hum < 20) return 20                                      // 극건조 상한 20
+  if (hum > 60 && hum <= 80) return ((hum - 60) / 20) * 30    // 0~30
+  return 30 + ((Math.min(hum, 100) - 80) / 20) * 70           // 30~100 (고습 위험)
 }
 
 /** 풍속: 3m/s 이하 쾌적, 7m/s 이상 불편, 10m/s 이상 위험 */

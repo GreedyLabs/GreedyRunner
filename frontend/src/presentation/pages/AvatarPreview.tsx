@@ -2,7 +2,7 @@
  * 옷차림 시뮬레이터 — 온도·UV·강수 조합별 러너 아바타를 한눈에 확인.
  * 헤더의 "옷차림 추천" 링크로 진입한다.
  */
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { RunnerAvatar } from '../components/shared/RunnerAvatar'
 import type { WeatherInfo } from '../../domain/entities/airQuality.types'
 
@@ -19,21 +19,49 @@ const PRESETS: Array<{ label: string; weather: WeatherInfo }> = [
   { label: 'UV 데이터 없음 (봄)', weather: { temperature: 20, humidity: 50, windSpeed: 2, precipitation: 'none' } },
 ]
 
-export function AvatarPreview() {
-  const [custom, setCustom] = useState<WeatherInfo>({
-    temperature: 25, humidity: 50, windSpeed: 2, precipitation: 'none', uvIndex: 7,
-  })
+const DEFAULT_WEATHER: WeatherInfo = {
+  temperature: 25, humidity: 50, windSpeed: 2, precipitation: 'none', uvIndex: 7,
+}
+
+interface AvatarPreviewProps {
+  currentWeather?: WeatherInfo
+}
+
+export function AvatarPreview({ currentWeather }: AvatarPreviewProps) {
+  const [custom, setCustom] = useState<WeatherInfo>(currentWeather ?? DEFAULT_WEATHER)
+
+  // currentWeather가 변경되면 항상 반영 (슬라이더 조작 전까지)
+  useEffect(() => {
+    if (currentWeather) {
+      setCustom(currentWeather)
+    }
+  }, [currentWeather])
+
+  const hasLiveData = !!currentWeather
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-lg sm:text-xl font-bold text-gray-800">러닝 옷차림 시뮬레이터</h1>
-        <p className="text-xs text-gray-400 mt-0.5">날씨 조건을 조절해서 추천 옷차림을 확인하세요</p>
+        <p className="text-xs text-gray-400 mt-0.5">
+          {hasLiveData ? '현재 날씨가 반영되었습니다. 슬라이더로 조건을 바꿔보세요.' : '날씨 조건을 조절해서 추천 옷차림을 확인하세요'}
+        </p>
       </div>
 
       {/* 커스텀 슬라이더 */}
       <div className="bg-gradient-to-br from-blue-400 to-blue-600 rounded-3xl p-6 text-white">
-        <h2 className="font-bold mb-4">커스텀 조합</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-bold">{hasLiveData ? '현재 날씨 기준' : '커스텀 조합'}</h2>
+          {hasLiveData && (
+            <button
+              type="button"
+              onClick={() => setCustom(currentWeather)}
+              className="text-[10px] text-white/70 hover:text-white underline"
+            >
+              현재 날씨로 초기화
+            </button>
+          )}
+        </div>
         <div className="grid grid-cols-2 gap-4 mb-5 text-sm">
           <label className="flex flex-col gap-1">
             기온: {custom.temperature}°C

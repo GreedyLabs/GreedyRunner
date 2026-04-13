@@ -43,7 +43,7 @@ function App() {
             />
           }
         />
-        <Route path="/outfit" element={<AvatarPreview />} />
+        <Route path="/outfit" element={<AvatarPreview currentWeather={airQuality.data?.current.weather} />} />
       </Routes>
     </MainLayout>
   )

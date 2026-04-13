@@ -45,14 +45,9 @@ export function HourlyForecast({
     container.scrollTo({ left: scrollLeft, behavior: 'smooth' });
   }, [forecast]);
 
-  const bestHourLabel = (() => {
-    if (bestHours.length === 0) return '추천 시간대가 없어요';
-    return bestHours.map((h) => {
-      const item = forecast.find((f) => f.hour === h);
-      const prefix = item?.isNextDay ? '내일 ' : '';
-      return `${prefix}${h}시`;
-    }).join(', ');
-  })();
+  const bestHourLabel = bestHours.length > 0
+    ? bestHours.map((h) => `${h}시`).join(', ')
+    : null;
 
   return (
     <Card className="animate-slide-up">
@@ -61,11 +56,18 @@ export function HourlyForecast({
         <span className="text-xs text-gray-400">24시간 예보</span>
       </div>
 
-      {bestHours.length > 0 && (
+      {bestHourLabel ? (
         <div className="bg-blue-50 rounded-xl p-3 mb-4 flex items-center gap-2">
           <div>
             <p className="text-xs text-blue-500 font-medium">언제 달리는 게 더 좋을까요?</p>
             <p className="text-sm font-bold text-blue-700">{bestHourLabel}가 최적입니다</p>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-amber-50 rounded-xl p-3 mb-4 flex items-center gap-2">
+          <div>
+            <p className="text-xs text-amber-500 font-medium">오늘은 야외 러닝이 어려운 날이에요</p>
+            <p className="text-sm font-bold text-amber-700">실내 운동이나 휴식을 추천합니다</p>
           </div>
         </div>
       )}

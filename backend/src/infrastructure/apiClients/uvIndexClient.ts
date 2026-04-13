@@ -10,7 +10,8 @@
 
 import { latLngToAreaNo } from './areaNoLookup';
 
-const API_KEY = process.env.UV_API_KEY ?? '';
+// 공공데이터포털 서비스키 — 에어코리아와 동일한 포털 키 사용
+const API_KEY = process.env.AIR_KOREA_API_KEY ?? '';
 const BASE_URL = 'https://apis.data.go.kr/1360000/LivingWthrIdxServiceV4';
 
 // ── KST 유틸 ────────────────────────────────────────────────

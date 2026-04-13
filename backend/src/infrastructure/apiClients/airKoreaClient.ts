@@ -172,7 +172,7 @@ export async function getAirQuality(
   lng?: number,
 ): Promise<AirQualityData> {
   const hasWeatherKey = !!process.env.KMA_API_KEY;
-  const hasUVKey = !!process.env.UV_API_KEY;
+  const hasUVKey = !!process.env.AIR_KOREA_API_KEY;
   const hasCoords = lat != null && lng != null;
 
   // 측정소 조회 + 기상/UV를 **동시에** 시작
@@ -362,15 +362,12 @@ function buildAirQualityData(
     };
   });
 
-  // 최적 시간: 현재 이후, 점수 60 이상
+  // 최적 시간: 오늘 이내(isNextDay 아닌) 현재 이후, 점수 65 이상
   const bestRunningHours = [...hourlyForecast]
-    .filter((h) => h.hour !== currentHour && h.runningIndex.score >= 60)
+    .filter((h) => !h.isNextDay && h.hour !== currentHour && h.runningIndex.score >= 65)
     .sort((a, b) => b.runningIndex.score - a.runningIndex.score)
     .slice(0, 3)
-    .sort((a, b) => {
-      if (a.isNextDay !== b.isNextDay) return a.isNextDay ? 1 : -1;
-      return a.hour - b.hour;
-    })
+    .sort((a, b) => a.hour - b.hour)
     .map((h) => h.hour);
 
   return {
