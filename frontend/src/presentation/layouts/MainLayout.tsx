@@ -90,7 +90,7 @@ export function MainLayout({ children }: MainLayoutProps) {
             href="mailto:hailey@greedylabs.kr?subject=[GreedyRunner] 문의"
             className="text-gray-400 hover:text-gray-600 underline underline-offset-2 transition-colors"
           >
-            문의하기
+            개발자에게 피드백
           </a>
         </div>
       </footer>

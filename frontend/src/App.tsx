@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom'
 import { MainLayout } from './presentation/layouts/MainLayout'
 import { HomePage } from './presentation/pages/HomePage'
 import { AvatarPreview } from './presentation/pages/AvatarPreview'
+import { RunningTipPage } from './presentation/pages/RunningTipPage'
 import { UmamiScript } from './presentation/components/shared/UmamiScript'
 import { useAirQuality } from './application/hooks/useAirQuality'
 import { useLocation } from './application/hooks/useLocation'
@@ -44,6 +45,7 @@ function App() {
           }
         />
         <Route path="/outfit" element={<AvatarPreview currentWeather={airQuality.data?.current.weather} />} />
+        <Route path="/tips/:id" element={<RunningTipPage />} />
       </Routes>
     </MainLayout>
   )

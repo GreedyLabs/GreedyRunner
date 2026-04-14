@@ -3,6 +3,7 @@ import { RegionSearch } from '../components/shared/RegionSearch'
 import { RunningIndexCard } from '../components/shared/RunningIndexCard'
 import { HourlyForecast } from '../components/shared/HourlyForecast'
 import { AirQualityDetails } from '../components/shared/AirQualityDetails'
+import { RunningTipCard } from '../components/shared/RunningTipCard'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import type { Region } from '../../domain/entities/region.types'
 import type { AirQualityData, HourlyForecast as HourlyForecastType } from '../../domain/entities/airQuality.types'
@@ -114,6 +115,7 @@ export function HomePage({
             onHourSelect={handleHourSelect}
           />
           <AirQualityDetails metrics={displayAirQuality} weather={displayWeather} />
+          <RunningTipCard />
         </>
       )}
     </>

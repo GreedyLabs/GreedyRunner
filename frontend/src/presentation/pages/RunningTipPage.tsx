@@ -1,0 +1,153 @@
+import { useParams, Link, Navigate } from 'react-router-dom'
+import { RUNNING_TIPS } from '../../lib/runningTips'
+import { Card } from '../components/ui/Card'
+
+const CATEGORY_COLOR: Record<string, string> = {
+  '페이스': 'bg-blue-100 text-blue-600',
+  '기상':   'bg-sky-100 text-sky-600',
+  '영양':   'bg-emerald-100 text-emerald-600',
+  '장비':   'bg-violet-100 text-violet-600',
+  '회복':   'bg-amber-100 text-amber-600',
+  '호흡':   'bg-teal-100 text-teal-600',
+}
+
+export function RunningTipPage() {
+  const { id } = useParams<{ id: string }>()
+  const tip = RUNNING_TIPS.find(t => t.id === id)
+
+  if (!tip) return <Navigate to="/" replace />
+
+  const categoryColor = CATEGORY_COLOR[tip.category] ?? 'bg-gray-100 text-gray-600'
+
+  // 단락 구분(\n\n), 굵게(**text**), 표(| 로 시작) 처리
+  const paragraphs = tip.detail.split('\n\n').map((block, i) => {
+    // 표 블록
+    if (block.trim().startsWith('|')) {
+      const rows = block.trim().split('\n').filter(l => !l.match(/^\|[-| ]+\|$/))
+      return (
+        <div key={i} className="overflow-x-auto my-3">
+          <table className="w-full text-xs sm:text-sm border-collapse">
+            <tbody>
+              {rows.map((row, ri) => {
+                const cells = row.split('|').filter(c => c.trim() !== '')
+                const Tag = ri === 0 ? 'th' : 'td'
+                return (
+                  <tr key={ri} className={ri === 0 ? 'bg-gray-50' : ri % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
+                    {cells.map((cell, ci) => (
+                      <Tag
+                        key={ci}
+                        className="border border-gray-200 px-3 py-1.5 text-left font-normal text-gray-700"
+                      >
+                        {cell.trim()}
+                      </Tag>
+                    ))}
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )
+    }
+
+    // 인라인 **굵게** 처리
+    const renderInline = (text: string) => {
+      const parts = text.split(/(\*\*[^*]+\*\*)/)
+      return parts.map((part, pi) =>
+        part.startsWith('**') && part.endsWith('**')
+          ? <strong key={pi} className="font-semibold text-gray-800">{part.slice(2, -2)}</strong>
+          : part
+      )
+    }
+
+    // 줄 단위 처리
+    const lines = block.split('\n')
+    return (
+      <div key={i} className="space-y-1">
+        {lines.map((line, li) => {
+          if (line.startsWith('- ')) {
+            return (
+              <div key={li} className="flex gap-2 text-xs sm:text-sm text-gray-600 leading-relaxed">
+                <span className="text-gray-400 shrink-0 mt-0.5">•</span>
+                <span>{renderInline(line.slice(2))}</span>
+              </div>
+            )
+          }
+          if (line.startsWith('**') && line.endsWith('**')) {
+            return (
+              <p key={li} className="font-semibold text-gray-800 text-sm sm:text-base mt-3">
+                {line.slice(2, -2)}
+              </p>
+            )
+          }
+          return (
+            <p key={li} className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+              {renderInline(line)}
+            </p>
+          )
+        })}
+      </div>
+    )
+  })
+
+  const otherTips = RUNNING_TIPS.filter(t => t.id !== tip.id).slice(0, 3)
+
+  return (
+    <div className="space-y-3 sm:space-y-4 animate-slide-up">
+      {/* 뒤로가기 */}
+      <Link
+        to="/"
+        className="inline-flex items-center gap-1.5 text-xs sm:text-sm text-gray-400 hover:text-gray-600 transition-colors"
+      >
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+        </svg>
+        홈으로
+      </Link>
+
+      {/* 본문 카드 */}
+      <Card>
+        <div className="flex items-center gap-2 mb-3">
+          <span className={`text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full ${categoryColor}`}>
+            {tip.category}
+          </span>
+          <span className="text-[10px] sm:text-xs text-gray-400">러닝 팁</span>
+        </div>
+        <h1 className="text-lg sm:text-xl font-bold text-gray-800 mb-4 leading-snug">
+          {tip.emoji} {tip.title}
+        </h1>
+        <p className="text-sm text-gray-600 leading-relaxed mb-6 pb-4 border-b border-gray-100">
+          {tip.summary}
+        </p>
+        <div className="space-y-4">
+          {paragraphs}
+        </div>
+      </Card>
+
+      {/* 다른 팁 */}
+      <div>
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-1">
+          다른 러닝 팁
+        </h2>
+        <div className="space-y-2">
+          {otherTips.map(other => (
+            <Link key={other.id} to={`/tips/${other.id}`}>
+              <Card className="hover:border-blue-200 hover:shadow-sm transition-all active:scale-[0.99] py-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-xl shrink-0">{other.emoji}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs sm:text-sm font-semibold text-gray-700 truncate">{other.title}</p>
+                    <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5">{other.category}</p>
+                  </div>
+                  <svg className="w-3.5 h-3.5 text-gray-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
