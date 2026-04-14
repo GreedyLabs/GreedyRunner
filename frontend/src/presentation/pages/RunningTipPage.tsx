@@ -1,4 +1,4 @@
-import { useParams, Link, Navigate } from 'react-router-dom'
+import { useParams, Link, Navigate, useLocation } from 'react-router-dom'
 import { RUNNING_TIPS } from '../../lib/runningTips'
 import { Card } from '../components/ui/Card'
 
@@ -13,6 +13,8 @@ const CATEGORY_COLOR: Record<string, string> = {
 
 export function RunningTipPage() {
   const { id } = useParams<{ id: string }>()
+  const location = useLocation()
+  const backUrl: string = (location.state as { backUrl?: string } | null)?.backUrl ?? '/tips'
   const tip = RUNNING_TIPS.find(t => t.id === id)
 
   if (!tip) return <Navigate to="/" replace />
@@ -90,19 +92,17 @@ export function RunningTipPage() {
     )
   })
 
-  const otherTips = RUNNING_TIPS.filter(t => t.id !== tip.id).slice(0, 3)
-
   return (
     <div className="space-y-3 sm:space-y-4 animate-slide-up">
       {/* 뒤로가기 */}
       <Link
-        to="/"
+        to={backUrl}
         className="inline-flex items-center gap-1.5 text-xs sm:text-sm text-gray-400 hover:text-gray-600 transition-colors"
       >
         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
         </svg>
-        홈으로
+        러닝 팁 목록
       </Link>
 
       {/* 본문 카드 */}
@@ -124,30 +124,15 @@ export function RunningTipPage() {
         </div>
       </Card>
 
-      {/* 다른 팁 */}
-      <div>
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-1">
-          다른 러닝 팁
-        </h2>
-        <div className="space-y-2">
-          {otherTips.map(other => (
-            <Link key={other.id} to={`/tips/${other.id}`}>
-              <Card className="hover:border-blue-200 hover:shadow-sm transition-all active:scale-[0.99] py-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-xl shrink-0">{other.emoji}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs sm:text-sm font-semibold text-gray-700 truncate">{other.title}</p>
-                    <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5">{other.category}</p>
-                  </div>
-                  <svg className="w-3.5 h-3.5 text-gray-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </Card>
-            </Link>
-          ))}
-        </div>
-      </div>
+      <Link
+        to="/tips"
+        className="inline-flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600 transition-colors px-1"
+      >
+        모든 팁 보기
+        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+      </Link>
     </div>
   )
 }

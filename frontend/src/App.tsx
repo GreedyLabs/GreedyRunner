@@ -4,6 +4,7 @@ import { MainLayout } from './presentation/layouts/MainLayout'
 import { HomePage } from './presentation/pages/HomePage'
 import { AvatarPreview } from './presentation/pages/AvatarPreview'
 import { RunningTipPage } from './presentation/pages/RunningTipPage'
+import { RunningTipsPage } from './presentation/pages/RunningTipsPage'
 import { UmamiScript } from './presentation/components/shared/UmamiScript'
 import { useAirQuality } from './application/hooks/useAirQuality'
 import { useLocation } from './application/hooks/useLocation'
@@ -45,6 +46,7 @@ function App() {
           }
         />
         <Route path="/outfit" element={<AvatarPreview currentWeather={airQuality.data?.current.weather} />} />
+        <Route path="/tips" element={<RunningTipsPage />} />
         <Route path="/tips/:id" element={<RunningTipPage />} />
       </Routes>
     </MainLayout>
