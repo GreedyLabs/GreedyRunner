@@ -85,7 +85,7 @@ async function getTMCoords(query: string): Promise<TmCoordResult[]> {
   const url = new URL(`${MSRS_BASE}/getTMStdrCrdnt`);
   url.searchParams.set('serviceKey', API_KEY);
   url.searchParams.set('returnType', 'json');
-  url.searchParams.set('numOfRows', '20');
+  url.searchParams.set('numOfRows', '30');
   url.searchParams.set('pageNo', '1');
   url.searchParams.set('umdName', query);
 
@@ -128,21 +128,96 @@ async function getStationMeasurements(stationName: string): Promise<StationMeasu
 
 // ── 공개 함수 ────────────────────────────────────────────────
 
+/**
+ * 도시명/광역시명 입력 시 해당 도시 내 대표 동 이름으로 추가 검색.
+ * AirKorea API는 umdName(읍면동명) 검색만 지원하므로, 도시명 자체는 검색되지 않는다.
+ * 도시명 감지 시 아래 대표 동 이름으로 병렬 검색 후 sidoName 필터를 걸어 해당 도시 결과만 포함.
+ *
+ * 도시 추가 방법: key에 검색어 키워드, value에 해당 도시의 실제 읍면동명 2~3개.
+ */
+const CITY_DONG_ALIASES: Record<string, { sidoKeyword: string; dongs: string[] }> = {
+  '서울': { sidoKeyword: '서울', dongs: ['명동', '역삼', '마포'] },
+  '부산': { sidoKeyword: '부산', dongs: ['수영', '범일', '해운대'] },
+  '인천': { sidoKeyword: '인천', dongs: ['부평', '연수'] },
+  '대구': { sidoKeyword: '대구', dongs: ['수성', '달서'] },
+  '광주': { sidoKeyword: '광주', dongs: ['광산', '북구'] },
+  '대전': { sidoKeyword: '대전', dongs: ['유성', '둔산'] },
+  '울산': { sidoKeyword: '울산', dongs: ['남구', '울주'] },
+  '경기': { sidoKeyword: '경기', dongs: ['수원', '성남', '고양'] },
+  '강원': { sidoKeyword: '강원', dongs: ['춘천', '강릉'] },
+  '제주': { sidoKeyword: '제주', dongs: ['이도', '서귀포'] },
+}
+
+/** 검색어와의 관련도 점수 (높을수록 위로) */
+function relevanceScore(r: TmCoordResult, q: string): number {
+  const lq = q.toLowerCase();
+  const umd = r.umdName.toLowerCase();
+  const sgg = r.sggName.toLowerCase();
+  const sido = r.sidoName.toLowerCase();
+  if (umd === lq)           return 4; // 동이름 완전 일치
+  if (umd.startsWith(lq))  return 3; // 동이름 전방 일치
+  if (umd.includes(lq))    return 2; // 동이름 부분 일치
+  if (sgg.includes(lq))    return 1; // 시군구명 포함
+  if (sido.includes(lq))   return 1; // 시도명 포함
+  return 0; // 도시 alias로 들어온 결과 (쿼리와 직접 매칭 없음)
+}
+
+function tmCoordToRegion(r: TmCoordResult): Region {
+  const tmX = parseFloat(String(r.tmX));
+  const tmY = parseFloat(String(r.tmY));
+  const { lat, lng } = tmToLatLng(tmX, tmY);
+  return {
+    id: `tm:${Math.round(tmX)}:${Math.round(tmY)}`,
+    name: `${r.sidoName} ${r.sggName} ${r.umdName}`.replace(/\s+/g, ' ').trim(),
+    shortName: r.umdName,
+    city: r.sidoName,
+    lat,
+    lng,
+  };
+}
+
 export async function searchRegions(query: string): Promise<Region[]> {
-  const results = await getTMCoords(query.trim());
-  return results.slice(0, 6).map((r) => {
-    const tmX = parseFloat(String(r.tmX));
-    const tmY = parseFloat(String(r.tmY));
-    const { lat, lng } = tmToLatLng(tmX, tmY);
-    return {
-      id: `tm:${Math.round(tmX)}:${Math.round(tmY)}`,
-      name: `${r.sidoName} ${r.sggName} ${r.umdName}`.replace(/\s+/g, ' ').trim(),
-      shortName: r.umdName,
-      city: r.sidoName,
-      lat,
-      lng,
-    };
+  const q = query.trim();
+  if (!q) return [];
+
+  // 도시명 키워드 감지
+  const cityAlias = Object.entries(CITY_DONG_ALIASES).find(([key]) => q === key || q.startsWith(key));
+
+  if (!cityAlias) {
+    // 일반 동 이름 검색 — 관련도 순 정렬, 제한 없음
+    const results = await getTMCoords(q);
+    return results
+      .sort((a, b) => relevanceScore(b, q) - relevanceScore(a, q))
+      .map(tmCoordToRegion);
+  }
+
+  const [cityKey, { sidoKeyword, dongs }] = cityAlias;
+
+  // 원래 쿼리 + 대표 동 이름들을 병렬 검색
+  const [primaryResults, ...aliasResults] = await Promise.all([
+    getTMCoords(q),
+    ...dongs.map((dong) => getTMCoords(dong).catch(() => [] as TmCoordResult[])),
+  ]);
+
+  // 별칭 결과는 해당 도시(sidoName 키워드 포함)만 유지
+  const filteredAliasRaw = aliasResults
+    .flat()
+    .filter((r) => r.sidoName.includes(sidoKeyword));
+
+  // primary + alias 합치고 TM 좌표 기준 중복 제거 후 관련도 순 정렬
+  const allRaw = [...primaryResults, ...filteredAliasRaw];
+  const seen = new Set<string>();
+  const deduped = allRaw.filter((r) => {
+    const key = `${Math.round(parseFloat(String(r.tmX)))}:${Math.round(parseFloat(String(r.tmY)))}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
   });
+
+  console.log(`[search] "${q}" → 도시 감지(${cityKey}): 직접 ${primaryResults.length}건 + 별칭 ${filteredAliasRaw.length}건`);
+  return deduped
+    .sort((a, b) => relevanceScore(b, q) - relevanceScore(a, q))
+    .map(tmCoordToRegion);
 }
 
 export async function getRegionByCoords(lat: number, lng: number): Promise<Region> {

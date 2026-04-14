@@ -23,20 +23,44 @@ export function RegionSearch({
   const inputId = useId()
   const { query, results, isSearching, setQuery, closeDropdown } = useRegionSearch()
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [activeIndex, setActiveIndex] = useState(-1)
   const inputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const listboxId = `${inputId}-listbox`
 
   function handleSelect(region: Region) {
     onRegionSelect(region)
-    setQuery(region.name)   // 입력창에 선택된 지역명 표시
+    setQuery(region.name)
     closeDropdown()
     setIsDropdownOpen(false)
+    setActiveIndex(-1)
     inputRef.current?.blur()
   }
 
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     setQuery(e.target.value)
     setIsDropdownOpen(true)
+    setActiveIndex(-1)
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (!showDropdown) return
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setActiveIndex(prev => Math.min(prev + 1, results.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActiveIndex(prev => Math.max(prev - 1, -1))
+    } else if (e.key === 'Enter') {
+      if (activeIndex >= 0 && results[activeIndex]) {
+        e.preventDefault()
+        handleSelect(results[activeIndex])
+      }
+    } else if (e.key === 'Escape') {
+      setIsDropdownOpen(false)
+      setActiveIndex(-1)
+    }
   }
 
   function handleBlur(e: React.FocusEvent) {
@@ -77,7 +101,13 @@ export function RegionSearch({
               onChange={handleInputChange}
               onFocus={() => setIsDropdownOpen(true)}
               onBlur={handleBlur}
-              placeholder="지역을 검색하세요 (예: 강남, 부산)"
+              onKeyDown={handleKeyDown}
+              placeholder="동이름 또는 도시명으로 검색 (예: 역삼동, 부산)"
+              role="combobox"
+              aria-expanded={showDropdown}
+              aria-autocomplete="list"
+              aria-controls={listboxId}
+              aria-activedescendant={activeIndex >= 0 ? `${listboxId}-${activeIndex}` : undefined}
               className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
             />
             {isSearching && (
@@ -91,7 +121,7 @@ export function RegionSearch({
           {showDropdown && (
             <div
               ref={dropdownRef}
-              className="absolute z-20 top-full left-0 right-0 mt-1.5 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden"
+              className="absolute z-20 top-full left-0 right-0 mt-1.5 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto"
             >
               {isSearching && results.length === 0 ? (
                 <div className="px-4 py-3 text-sm text-gray-400 text-center">검색 중...</div>
@@ -100,15 +130,18 @@ export function RegionSearch({
                   검색 결과가 없습니다
                 </div>
               ) : (
-                <ul role="listbox">
-                  {results.map(region => (
-                    <li key={region.id} role="option" aria-selected={selectedRegion?.id === region.id}>
+                <ul id={listboxId} role="listbox">
+                  {results.map((region, index) => (
+                    <li key={region.id} id={`${listboxId}-${index}`} role="option" aria-selected={selectedRegion?.id === region.id}>
                       <button
                         type="button"
                         onMouseDown={() => handleSelect(region)}
+                        onMouseEnter={() => setActiveIndex(index)}
                         className={cn(
-                          'w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50 transition-colors flex items-center gap-3',
-                          selectedRegion?.id === region.id && 'bg-blue-50 text-blue-700'
+                          'w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center gap-3',
+                          activeIndex === index ? 'bg-blue-100 text-blue-700' :
+                          selectedRegion?.id === region.id ? 'bg-blue-50 text-blue-700' :
+                          'hover:bg-blue-50'
                         )}
                       >
                         <span className="text-gray-400">📍</span>

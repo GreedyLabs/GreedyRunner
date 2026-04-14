@@ -45,9 +45,16 @@ const REGION_BASE: Record<string, [number, number]> = {
 export async function searchRegions(query: string): Promise<Region[]> {
   const q = query.trim().toLowerCase()
   if (!q) return []
-  return MOCK_REGIONS.filter(
-    r => r.name.includes(q) || r.city.includes(q) || r.shortName.includes(q)
-  ).slice(0, 6)
+  const score = (r: Region) => {
+    if (r.shortName.toLowerCase() === q)          return 4
+    if (r.shortName.toLowerCase().startsWith(q))  return 3
+    if (r.shortName.toLowerCase().includes(q))    return 2
+    if (r.city.toLowerCase().includes(q))         return 1
+    return 0
+  }
+  return MOCK_REGIONS
+    .filter(r => score(r) > 0)
+    .sort((a, b) => score(b) - score(a))
 }
 
 export async function getRegionByCoords(lat: number, lng: number): Promise<Region> {
