@@ -40,10 +40,16 @@ export interface StationFallback {
   reason: string
 }
 
+export interface ServiceStatus {
+  airKorea: 'ok' | 'timeout' | 'error'
+  weather: 'ok' | 'timeout' | 'error' | 'unavailable'
+}
+
 export interface AirQualityData {
   regionName: string
   updatedAt: Date
   stationFallback?: StationFallback
+  serviceStatus?: ServiceStatus
   current: {
     airQuality: AirQualityMetrics
     weather?: WeatherInfo

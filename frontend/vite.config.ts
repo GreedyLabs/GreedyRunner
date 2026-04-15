@@ -16,6 +16,9 @@ export default defineConfig({
       // Service Worker가 캐시할 앱 껍데기 파일 목록 (자동 생성)
       includeAssets: ['ico_b1.png', 'apple-touch-icon.png'],
       manifest: {
+        // id: 앱의 고유 식별자. 최신 PWA 스펙 필수 필드.
+        // 한번 정하면 바꾸지 않아야 함 (바꾸면 기존 설치 앱과 별개로 인식됨)
+        id: 'kr.greedylabs.run',
         name: '달려도 되나요? — GreedyRunner',
         short_name: 'GreedyRunner',
         description: '지금 달리기 좋은 날씨인지 확인하세요. 러닝 지수, 대기질, 최적 시간을 알려드립니다.',
@@ -26,6 +29,17 @@ export default defineConfig({
         scope: '/',
         lang: 'ko',
         orientation: 'portrait',
+        categories: ['health', 'sports'],
+        screenshots: [
+          {
+            // 설치 다이얼로그에 표시되는 앱 미리보기 이미지
+            src: '/og-image.png',
+            sizes: '1200x630',
+            type: 'image/png',
+            form_factor: 'wide',
+            label: '러닝 지수와 대기질을 한눈에',
+          },
+        ],
         icons: [
           {
             src: '/pwa-192x192.png',

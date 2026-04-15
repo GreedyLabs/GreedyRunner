@@ -10,6 +10,7 @@ import proj4 from 'proj4';
 import type {
   AirQualityData,
   AirQualityMetrics,
+  ServiceStatus,
   StationFallback,
   WeatherInfo,
 } from '../../domain/entities/airQuality';
@@ -21,6 +22,16 @@ import { getUVIndex, type UVData } from './uvIndexClient';
 const API_KEY = process.env.AIR_KOREA_API_KEY ?? '';
 const MSRS_BASE = 'https://apis.data.go.kr/B552584/MsrstnInfoInqireSvc';
 const ARPL_BASE = 'https://apis.data.go.kr/B552584/ArpltnInforInqireSvc';
+
+async function fetchWithTimeout(url: string, timeoutMs = 8000): Promise<Response> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await fetch(url, { signal: controller.signal })
+  } finally {
+    clearTimeout(timer)
+  }
+}
 
 // 한국 중부원점 TM 좌표계 (EPSG:2097, Bessel 타원체)
 proj4.defs(
@@ -65,7 +76,7 @@ async function getNearbyStations(tmX: number, tmY: number): Promise<NearbyStatio
   url.searchParams.set('tmY', tmY.toFixed(6));
   url.searchParams.set('ver', '1.1');
 
-  const res = await fetch(url.toString());
+  const res = await fetchWithTimeout(url.toString());
   if (!res.ok) throw new Error(`getNearbyMsrstnList HTTP ${res.status}`);
   const json = (await res.json()) as AirKoreaResponse<NearbyStation>;
   const { resultCode, resultMsg } = json.response.header;
@@ -89,7 +100,7 @@ async function getTMCoords(query: string): Promise<TmCoordResult[]> {
   url.searchParams.set('pageNo', '1');
   url.searchParams.set('umdName', query);
 
-  const res = await fetch(url.toString());
+  const res = await fetchWithTimeout(url.toString());
   if (!res.ok) throw new Error(`getTMStdrCrdnt HTTP ${res.status}`);
   const json = (await res.json()) as AirKoreaResponse<TmCoordResult>;
   const { resultCode, resultMsg } = json.response.header;
@@ -118,7 +129,7 @@ async function getStationMeasurements(stationName: string): Promise<StationMeasu
   url.searchParams.set('dataTerm', 'DAILY');
   url.searchParams.set('ver', '1.0');
 
-  const res = await fetch(url.toString());
+  const res = await fetchWithTimeout(url.toString());
   if (!res.ok) throw new Error(`getMsrstnAcctoRltmMesureDnsty HTTP ${res.status}`);
   const json = (await res.json()) as AirKoreaResponse<StationMeasurement>;
   const { resultCode, resultMsg } = json.response.header;
@@ -250,22 +261,27 @@ export async function getAirQuality(
   const hasUVKey = !!process.env.AIR_KOREA_API_KEY;
   const hasCoords = lat != null && lng != null;
 
+  let weatherStatus: ServiceStatus['weather'] = hasWeatherKey && hasCoords ? 'ok' : 'unavailable';
+
+  function handleWeatherError(label: string) {
+    return (err: unknown): null => {
+      const isTimeout = err instanceof Error && err.name === 'AbortError';
+      weatherStatus = isTimeout ? 'timeout' : 'error';
+      console.warn(`[${label}]`, err);
+      return null;
+    };
+  }
+
   // 측정소 조회 + 기상/UV를 **동시에** 시작
   // 기존: await 측정소 → await 기상 (직렬, 합산 시간)
   // 변경: Promise.all로 병렬 (가장 느린 쪽 기준)
   const [stationResult, currentWeather, hourlyWeather, uvData] = await Promise.all([
     resolveStationWithFallback(regionId),
     hasWeatherKey && hasCoords
-      ? getCurrentWeather(lat, lng).catch((err) => {
-          console.warn('[weather]', err);
-          return null;
-        })
+      ? getCurrentWeather(lat, lng).catch(handleWeatherError('weather'))
       : Promise.resolve(null),
     hasWeatherKey && hasCoords
-      ? getHourlyWeather(lat, lng).catch((err) => {
-          console.warn('[weather-hourly]', err);
-          return null;
-        })
+      ? getHourlyWeather(lat, lng).catch(handleWeatherError('weather-hourly'))
       : Promise.resolve(null),
     hasUVKey && hasCoords
       ? getUVIndex(lat, lng).catch((err) => {
@@ -276,7 +292,8 @@ export async function getAirQuality(
   ]);
 
   const { stationName, measurements, fallback } = stationResult;
-  return buildAirQualityData(stationName, measurements, currentWeather, hourlyWeather, uvData, fallback);
+  const serviceStatus: ServiceStatus = { airKorea: 'ok', weather: weatherStatus };
+  return buildAirQualityData(stationName, measurements, currentWeather, hourlyWeather, uvData, serviceStatus, fallback);
 }
 
 // ── 내부 유틸 ──────────────────────────────────────────────
@@ -373,6 +390,7 @@ function buildAirQualityData(
   currentWeather: Awaited<ReturnType<typeof getCurrentWeather>> | null,
   hourlyWeather: HourlyWeatherMap | null,
   uvData: UVData | null,
+  serviceStatus: ServiceStatus,
   fallback?: StationFallback,
 ): AirQualityData {
   // 기준 시각은 실제 최신 측정값의 시각으로 고정한다.
@@ -459,6 +477,7 @@ function buildAirQualityData(
     regionName: fallback ? `${fallback.fallbackStation} 측정소` : `${stationName} 측정소`,
     updatedAt,
     stationFallback: fallback,
+    serviceStatus,
     current: {
       airQuality: currentMetrics,
       weather: currentWx,

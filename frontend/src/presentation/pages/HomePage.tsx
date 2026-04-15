@@ -85,6 +85,24 @@ export function HomePage({
       {/* 데이터 표시 */}
       {data && !isLoading && displayRunningIndex && displayAirQuality && (
         <>
+          {data.serviceStatus?.weather === 'timeout' && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 sm:p-4 flex items-start gap-2">
+              <span className="text-amber-500 text-sm mt-0.5">⚠️</span>
+              <div className="text-xs sm:text-sm">
+                <p className="text-amber-700 font-medium">기상청 API 허브 응답 지연</p>
+                <p className="text-amber-600 mt-0.5">날씨 정보를 가져올 수 없어 대기질 기반으로만 달리기 지수를 계산했습니다.</p>
+              </div>
+            </div>
+          )}
+          {data.serviceStatus?.weather === 'error' && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 sm:p-4 flex items-start gap-2">
+              <span className="text-amber-500 text-sm mt-0.5">⚠️</span>
+              <div className="text-xs sm:text-sm">
+                <p className="text-amber-700 font-medium">기상청 API 허브 장애</p>
+                <p className="text-amber-600 mt-0.5">날씨 정보를 가져올 수 없어 대기질 기반으로만 달리기 지수를 계산했습니다.</p>
+              </div>
+            </div>
+          )}
           {data.stationFallback && (
             <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 sm:p-4 flex items-start gap-2">
               <span className="text-amber-500 text-sm mt-0.5">⚠️</span>

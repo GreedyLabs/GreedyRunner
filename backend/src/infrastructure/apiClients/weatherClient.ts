@@ -12,6 +12,16 @@ import type { WeatherMetrics } from '../../domain/entities/weather'
 const API_KEY = process.env.KMA_API_KEY ?? ''
 const BASE_URL = 'https://apihub.kma.go.kr/api/typ02/openApi/VilageFcstInfoService_2.0'
 
+async function fetchWithTimeout(url: string, timeoutMs = 8000): Promise<Response> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await fetch(url, { signal: controller.signal })
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 // ── 기상청 격자 좌표 변환 (LCC DFS) ─────────────────────────
 
 interface GridCoord { nx: number; ny: number }
@@ -137,7 +147,7 @@ async function fetchUltraSrtNcst(nx: number, ny: number): Promise<Map<string, st
   url.searchParams.set('nx', String(nx))
   url.searchParams.set('ny', String(ny))
 
-  const res = await fetch(url.toString())
+  const res = await fetchWithTimeout(url.toString())
   if (!res.ok) throw new Error(`초단기실황 HTTP ${res.status}`)
   const json = (await res.json()) as KmaResponse
   if (json.response.header.resultCode !== '00') {
@@ -166,7 +176,7 @@ async function fetchVilageFcst(nx: number, ny: number): Promise<Map<string, Map<
   url.searchParams.set('nx', String(nx))
   url.searchParams.set('ny', String(ny))
 
-  const res = await fetch(url.toString())
+  const res = await fetchWithTimeout(url.toString())
   if (!res.ok) throw new Error(`단기예보 HTTP ${res.status}`)
   const json = (await res.json()) as KmaResponse
   if (json.response.header.resultCode !== '00') {

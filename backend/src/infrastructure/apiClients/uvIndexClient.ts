@@ -14,6 +14,16 @@ import { latLngToAreaNo } from './areaNoLookup';
 const API_KEY = process.env.AIR_KOREA_API_KEY ?? '';
 const BASE_URL = 'https://apis.data.go.kr/1360000/LivingWthrIdxServiceV4';
 
+async function fetchWithTimeout(url: string, timeoutMs = 8000): Promise<Response> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await fetch(url, { signal: controller.signal })
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 // ── KST 유틸 ────────────────────────────────────────────────
 
 function nowKST(): Date {
@@ -83,7 +93,7 @@ async function fetchUVIndex(areaNo: string): Promise<Map<number, number>> {
   url.searchParams.set('numOfRows', '10');
   url.searchParams.set('pageNo', '1');
 
-  const res = await fetch(url.toString());
+  const res = await fetchWithTimeout(url.toString());
   if (!res.ok) throw new Error(`UV API HTTP ${res.status}`);
   const json = (await res.json()) as UVResponse;
 

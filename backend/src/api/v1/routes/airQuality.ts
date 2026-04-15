@@ -28,7 +28,11 @@ airQualityRouter.get('/search', async (req: Request, res: Response) => {
     res.json({ results })
   } catch (err) {
     console.error('[search]', err)
-    res.status(502).json({ error: '지역 검색 중 오류가 발생했습니다.' })
+    if (err instanceof Error && err.name === 'AbortError') {
+      res.status(504).json({ error: '에어코리아 API 응답 지연으로 지역 검색을 완료할 수 없습니다. 잠시 후 다시 시도해 주세요.' })
+    } else {
+      res.status(502).json({ error: '지역 검색 중 오류가 발생했습니다.' })
+    }
   }
 })
 
@@ -44,7 +48,11 @@ airQualityRouter.get('/by-coords', async (req: Request, res: Response) => {
     res.json(region)
   } catch (err) {
     console.error('[by-coords]', err)
-    res.status(502).json({ error: '위치 기반 측정소 조회 중 오류가 발생했습니다.' })
+    if (err instanceof Error && err.name === 'AbortError') {
+      res.status(504).json({ error: '에어코리아 API 응답 지연으로 위치 조회를 완료할 수 없습니다. 잠시 후 다시 시도해 주세요.' })
+    } else {
+      res.status(502).json({ error: '위치 기반 측정소 조회 중 오류가 발생했습니다.' })
+    }
   }
 })
 
@@ -76,6 +84,8 @@ airQualityRouter.get('/:regionId', async (req: Request, res: Response) => {
     console.error('[region]', message)
     if (message.includes('찾을 수 없습니다')) {
       res.status(404).json({ error: message })
+    } else if (err instanceof Error && err.name === 'AbortError') {
+      res.status(504).json({ error: '에어코리아 API 응답 지연으로 대기질 정보를 가져올 수 없습니다. 잠시 후 다시 시도해 주세요.' })
     } else {
       res.status(502).json({ error: '대기질 정보 조회 중 오류가 발생했습니다.' })
     }

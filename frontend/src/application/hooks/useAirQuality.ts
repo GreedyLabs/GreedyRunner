@@ -41,11 +41,11 @@ export function useAirQuality(): UseAirQualityReturn {
       const data = await getAirQualityByRegion(regionId, lat, lng)
       cacheRef.current.set(cacheKey, { data, expiresAt: Date.now() + CACHE_TTL })
       setState({ data, isLoading: false, error: null })
-    } catch {
+    } catch (err) {
       setState(prev => ({
         ...prev,
         isLoading: false,
-        error: '대기질 정보를 불러오는 데 실패했습니다.',
+        error: err instanceof Error ? err.message : '대기질 정보를 불러오는 데 실패했습니다.',
       }))
     }
   }, [])
