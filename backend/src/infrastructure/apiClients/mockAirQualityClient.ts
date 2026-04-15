@@ -87,6 +87,7 @@ export async function getAirQuality(regionId: string, _lat?: number, _lng?: numb
   return {
     regionName: region.name,
     updatedAt: now,
+    serviceStatus: { airKorea: 'ok', weather: 'unavailable' },
     current: {
       airQuality: currentAirQuality,
       runningIndex: currentRunningIndex,
