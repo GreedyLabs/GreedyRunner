@@ -1,41 +1,88 @@
-name: Deploy
+name: Build and Deploy
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
+    inputs:
+      no_cache:
+        description: '빌드 캐시 무시 (secret 변경 시 체크)'
+        type: boolean
+        default: false
 
-concurrency:
-  group: deploy-production
-  cancel-in-progress: false
-
-env:
-  SERVICE_BASE: /home/greedylabs/service
-  SERVICE_NAME: ${{ github.event.repository.name }}
+permissions:
+  contents: read
+  packages: write
 
 jobs:
-  deploy:
-    runs-on: greedylabs
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.out.outputs.frontend }}
+      backend: ${{ steps.out.outputs.backend }}
     steps:
-      - name: Clone or update repository
+      - uses: actions/checkout@v6
+
+      - id: filter
+        if: github.event_name == 'push'
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            frontend:
+              - 'frontend/**'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+            backend:
+              - 'backend/**'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+
+      - id: out
         run: |
-          TARGET_DIR="${{ env.SERVICE_BASE }}/${{ env.SERVICE_NAME }}"
-          if [ -d "$TARGET_DIR/.git" ]; then
-            git -C "$TARGET_DIR" pull
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "frontend=true" >> "$GITHUB_OUTPUT"
+            echo "backend=true" >> "$GITHUB_OUTPUT"
           else
-            mkdir -p "${{ env.SERVICE_BASE }}"
-            git clone ${{ github.server_url }}/${{ github.repository }}.git "$TARGET_DIR"
+            echo "frontend=${{ steps.filter.outputs.frontend }}" >> "$GITHUB_OUTPUT"
+            echo "backend=${{ steps.filter.outputs.backend }}" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Write .env
-        run: |
-          echo "${{ secrets.ENV_FILE }}" > "${{ env.SERVICE_BASE }}/${{ env.SERVICE_NAME }}/.env"
+  build-frontend:
+    needs: resolve
+    if: needs.resolve.outputs.frontend == 'true'
+    uses: ./.github/workflows/_build-image.yml
+    with:
+      component: frontend
+      dockerfile: ./frontend/Dockerfile
+      image: ${{ github.repository_owner }}/greedyrunner-fe
+      version: ${{ github.run_number }}
+      no_cache: ${{ inputs.no_cache || false }}
+    secrets:
+      BUILD_ENV: ${{ secrets.FRONTEND_ENV }}
 
-      - name: Deploy with Docker Compose
-        run: |
-          cd "${{ env.SERVICE_BASE }}/${{ env.SERVICE_NAME }}"
-          docker compose pull --ignore-pull-failures || true
-          docker compose up --build -d
-          docker image prune -f
-          docker builder prune -f --keep-storage 2gb
+  build-backend:
+    needs: resolve
+    if: needs.resolve.outputs.backend == 'true'
+    uses: ./.github/workflows/_build-image.yml
+    with:
+      component: backend
+      dockerfile: ./backend/Dockerfile
+      image: ${{ github.repository_owner }}/greedyrunner-be
+      version: ${{ github.run_number }}
+      no_cache: ${{ inputs.no_cache || false }}
+
+  deploy:
+    needs: [resolve, build-frontend, build-backend]
+    if: |
+      always() &&
+      !cancelled() &&
+      needs.resolve.result == 'success' &&
+      needs.build-frontend.result != 'failure' &&
+      needs.build-backend.result != 'failure' &&
+      (needs.resolve.outputs.frontend == 'true' || needs.resolve.outputs.backend == 'true')
+    uses: ./.github/workflows/_deploy-compose.yml
+    with:
+      frontend_tag: ${{ needs.resolve.outputs.frontend == 'true' && github.run_number || 'latest' }}
+      backend_tag: ${{ needs.resolve.outputs.backend == 'true' && github.run_number || 'latest' }}
+    secrets:
+      BACKEND_ENV: ${{ secrets.BACKEND_ENV }}

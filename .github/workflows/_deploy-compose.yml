@@ -1,0 +1,51 @@
+name: Deploy Compose
+
+on:
+  workflow_call:
+    inputs:
+      frontend_tag:
+        required: true
+        type: string
+      backend_tag:
+        required: true
+        type: string
+    secrets:
+      BACKEND_ENV:
+        required: true
+
+jobs:
+  deploy:
+    runs-on: greedylabs
+    concurrency:
+      group: deploy-greedyrunner
+      cancel-in-progress: false
+    env:
+      FRONTEND_TAG: ${{ inputs.frontend_tag }}
+      BACKEND_TAG: ${{ inputs.backend_tag }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Write backend env file
+        run: |
+          printf '%s' "${{ secrets.BACKEND_ENV }}" > backend.env
+          chmod 600 backend.env
+
+      - name: Pull images
+        run: docker compose pull
+
+      - name: Deploy
+        run: docker compose up -d --remove-orphans
+
+      - name: Prune old images
+        run: docker image prune -f
+
+      - name: Clean up env file
+        if: always()
+        run: rm -f backend.env

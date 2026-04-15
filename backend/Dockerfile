@@ -1,27 +1,27 @@
-# ── Build stage ──
-FROM node:20-alpine AS build
-RUN corepack enable && corepack prepare pnpm@latest --activate
-WORKDIR /app
+FROM node:22-alpine AS base
+RUN corepack enable
+WORKDIR /repo
 
-# 루트 워크스페이스 설정 + lock 파일 복사 (레이어 캐시 최적화)
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
-COPY frontend/package.json ./frontend/
-COPY backend/package.json ./backend/
+FROM base AS deps
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY backend/package.json backend/package.json
+RUN pnpm fetch
 
-RUN pnpm install --frozen-lockfile
-
-COPY backend/ ./backend/
+FROM deps AS build
+COPY backend backend
+RUN pnpm install --frozen-lockfile --filter @greedy-runner/backend
 RUN pnpm --filter @greedy-runner/backend run build
 
-# pnpm deploy: 프로덕션 의존성만 추출
-RUN pnpm --filter @greedy-runner/backend deploy --legacy /deploy
-
-# ── Production stage ──
-FROM node:20-alpine
+FROM node:22-alpine AS runtime
+RUN corepack enable
 WORKDIR /app
+ENV NODE_ENV=production
 
-COPY --from=build /deploy .
-COPY --from=build /app/backend/dist ./dist
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY backend/package.json backend/package.json
+RUN pnpm install --prod --frozen-lockfile --filter @greedy-runner/backend
+
+COPY --from=build /repo/backend/dist backend/dist
 
 EXPOSE 8000
-CMD ["node", "dist/main.js"]
+CMD ["node", "/app/backend/dist/main.js"]

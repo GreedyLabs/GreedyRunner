@@ -1,23 +1,18 @@
 services:
-  frontend:
-    build:
-      context: .
-      dockerfile: frontend/Dockerfile
-      args:
-        VITE_UMAMI_URL: ${VITE_UMAMI_URL}
-        VITE_UMAMI_WEBSITE_ID: ${VITE_UMAMI_WEBSITE_ID}
+  backend:
+    image: ghcr.io/greedylabs/greedyrunner-be:${BACKEND_TAG:-latest}
+    container_name: greedyrunner-be
+    restart: unless-stopped
+    env_file:
+      - backend.env
     ports:
-      - '8742:80'
+      - "8001:8000"
+
+  frontend:
+    image: ghcr.io/greedylabs/greedyrunner-fe:${FRONTEND_TAG:-latest}
+    container_name: greedyrunner-fe
+    restart: unless-stopped
+    ports:
+      - "3001:80"
     depends_on:
       - backend
-
-  backend:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
-    env_file:
-      - .env
-    environment:
-      - PORT=8000
-    expose:
-      - '8000'

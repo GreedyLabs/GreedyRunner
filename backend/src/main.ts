@@ -1,9 +1,7 @@
 import { config } from 'dotenv'
-import { resolve } from 'path'
 
 // dotenv는 import보다 먼저 실행되어야 하므로, 동적 import 사용
-// 루트 .env → backend/.env 순서로 로드 (후자가 있으면 덮어씀)
-config({ path: resolve(__dirname, '../../.env') })
+// backend/.env 로드 (cwd 기준)
 config()
 
 async function main() {
