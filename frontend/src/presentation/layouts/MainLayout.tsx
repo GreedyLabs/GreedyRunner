@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { usePWAInstall } from '../../hooks/usePWAInstall';
+import { PWAInstallBanner } from '../components/shared/PWAInstallBanner';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -14,6 +16,12 @@ export function MainLayout({ children }: MainLayoutProps) {
   const { pathname } = useLocation();
   const isHome = pathname === '/';
   const [stats, setStats] = useState<VisitorStats | null>(null);
+  const { showBanner, handleInstall, handleDismiss } = usePWAInstall();
+
+  // 개발 중 배너 미리보기: URL에 ?pwa=1 추가하면 강제 표시
+  const searchParams = new URLSearchParams(window.location.search);
+  const forceShowBanner = searchParams.get('pwa') === '1';
+  const isBannerVisible = showBanner || forceShowBanner;
 
   useEffect(() => {
     fetch('/api/v1/stats/visitors')
@@ -67,6 +75,10 @@ export function MainLayout({ children }: MainLayoutProps) {
       <main className="max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-3 sm:space-y-4">
         {children}
       </main>
+
+      {isBannerVisible && (
+        <PWAInstallBanner onInstall={handleInstall} onDismiss={handleDismiss} />
+      )}
 
       {/* 푸터 */}
       <footer className="max-w-2xl mx-auto px-3 sm:px-4 py-6 text-center space-y-2">

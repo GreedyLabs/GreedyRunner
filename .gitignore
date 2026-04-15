@@ -13,3 +13,5 @@ backend/.env
 # OS
 .DS_Store
 .claude/
+
+IMPROVEMENTS.md
