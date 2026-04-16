@@ -28,14 +28,10 @@ jobs:
         uses: dorny/paths-filter@v4
         with:
           filters: |
-            frontend:
+            frontend_only:
               - 'frontend/**'
-              - 'pnpm-lock.yaml'
-              - 'pnpm-workspace.yaml'
-            backend:
+            backend_only:
               - 'backend/**'
-              - 'pnpm-lock.yaml'
-              - 'pnpm-workspace.yaml'
 
       - id: out
         run: |
@@ -43,8 +39,11 @@ jobs:
             echo "frontend=true" >> "$GITHUB_OUTPUT"
             echo "backend=true" >> "$GITHUB_OUTPUT"
           else
-            echo "frontend=${{ steps.filter.outputs.frontend }}" >> "$GITHUB_OUTPUT"
-            echo "backend=${{ steps.filter.outputs.backend }}" >> "$GITHUB_OUTPUT"
+            # 반대 필터: backend만 변경되면 frontend 스킵, frontend만 변경되면 backend 스킵
+            FE_ONLY="${{ steps.filter.outputs.frontend_only }}"
+            BE_ONLY="${{ steps.filter.outputs.backend_only }}"
+            echo "frontend=$( [ "$BE_ONLY" = 'true' ] && [ "$FE_ONLY" = 'false' ] && echo false || echo true )" >> "$GITHUB_OUTPUT"
+            echo "backend=$( [ "$FE_ONLY" = 'true' ] && [ "$BE_ONLY" = 'false' ] && echo false || echo true )" >> "$GITHUB_OUTPUT"
           fi
 
   build-frontend:
