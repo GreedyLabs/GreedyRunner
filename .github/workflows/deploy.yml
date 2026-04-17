@@ -80,8 +80,5 @@ jobs:
       needs.build-backend.result != 'failure' &&
       (needs.resolve.outputs.frontend == 'true' || needs.resolve.outputs.backend == 'true')
     uses: ./.github/workflows/_deploy-compose.yml
-    with:
-      frontend_tag: ${{ needs.resolve.outputs.frontend == 'true' && github.run_number || 'latest' }}
-      backend_tag: ${{ needs.resolve.outputs.backend == 'true' && github.run_number || 'latest' }}
     secrets:
       BACKEND_ENV: ${{ secrets.BACKEND_ENV }}
