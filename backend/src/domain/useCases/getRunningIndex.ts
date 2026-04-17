@@ -97,7 +97,10 @@ function calculateScore(m: AirQualityMetrics, w?: WeatherInfo, hour?: number): n
   // 강수 강제 감점 (가중치와 별개로 적용)
   const precipBonus = precipitationForcePenalty(w.precipitation)
 
-  return Math.max(0, Math.min(100, Math.round(100 - compoundPenalty - precipBonus)))
+  // UV-열 복합 강제 감점 (가중치와 별개로 적용)
+  const uvHeatBonus = uvHeatForcePenalty(w.temperature, w.uvIndex, w.humidity, hour)
+
+  return Math.max(0, Math.min(100, Math.round(100 - compoundPenalty - precipBonus - uvHeatBonus)))
 }
 
 /**
@@ -195,6 +198,33 @@ function uvPenalty(uv: number, hour?: number): number {
   if (uv <= 7) return 20 + ((uv - 5) / 2) * 30     // 20~50
   if (uv <= 10) return 50 + ((uv - 7) / 3) * 30    // 50~80
   return 100                                         // 11+
+}
+
+/**
+ * UV-열 복합 강제 감점.
+ * UV가 높은(≥6) 날 기온이 20°C 이상이면 피부 온도 상승으로 체온 조절 부담이 커져
+ * 체감 더위가 기온 수치 이상으로 올라간다.
+ * 고습(>70%)이면 땀 증발이 억제돼 체온 조절이 더 어려워지므로 추가 증폭한다.
+ * 가중치 시스템과 별개로 직접 차감해 체감을 반영한다.
+ *
+ * UV 등급(높음/매우높음/위험) × 20°C 초과분 선형 증가 × 습도 증폭(최대 1.5배).
+ */
+function uvHeatForcePenalty(temp: number, uvIndex?: number, humidity?: number, hour?: number): number {
+  if (uvIndex == null || uvIndex < 6) return 0
+  if (temp < 17) return 0
+  // 야간에는 UV 없음
+  if (hour !== undefined && (hour >= 20 || hour < 6)) return 0
+
+  // UV 심각도 단계: 높음(6~7)=1, 매우높음(8~10)=2, 위험(11+)=3
+  const uvTier = uvIndex <= 7 ? 1 : uvIndex <= 10 ? 2 : 3
+  // 17°C 초과분 (32°C 기준 최대 15°C 캡)
+  const tempExcess = Math.min(temp - 17, 15)
+  // 습도 증폭: 70% 초과 시 최대 1.5배 (70~100% → 1.0~1.5배)
+  const humFactor = humidity != null && humidity > 70
+    ? 1 + Math.min((humidity - 70) / 60, 0.5)
+    : 1.0
+
+  return Math.round(uvTier * tempExcess * 2.5 * humFactor)
 }
 
 /** 비/눈이면 큰 감점 */
