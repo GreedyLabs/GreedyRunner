@@ -276,7 +276,7 @@ export async function getAirQuality(
   // 기존: await 측정소 → await 기상 (직렬, 합산 시간)
   // 변경: Promise.all로 병렬 (가장 느린 쪽 기준)
   const [stationResult, currentWeather, hourlyWeather, uvData] = await Promise.all([
-    resolveStationWithFallback(regionId),
+    resolveStationWithFallback(regionId, lat, lng),
     hasWeatherKey && hasCoords
       ? getCurrentWeather(lat, lng).catch(handleWeatherError('weather'))
       : Promise.resolve(null),
@@ -298,13 +298,12 @@ export async function getAirQuality(
 
 // ── 내부 유틸 ──────────────────────────────────────────────
 
-/** 측정 데이터가 비정상(PM2.5·PM10 모두 0 또는 빈 값)인지 판별 */
+/** 측정 데이터가 비정상(PM2.5·PM10 모두 결측("-") 또는 빈 값)인지 판별 */
 function isMeasurementFaulty(measurements: StationMeasurement[]): boolean {
   if (measurements.length === 0) return true;
   const latest = measurements[0];
-  const pm25 = parseNum(latest.pm25Value);
-  const pm10 = parseNum(latest.pm10Value);
-  return pm25 === 0 || pm10 === 0;
+  const isMissing = (v: string) => v === '-' || v === '' || v == null;
+  return isMissing(latest.pm25Value) && isMissing(latest.pm10Value);
 }
 
 /**
@@ -314,12 +313,14 @@ function isMeasurementFaulty(measurements: StationMeasurement[]): boolean {
  */
 async function resolveStationWithFallback(
   regionId: string,
+  lat?: number,
+  lng?: number,
 ): Promise<{
   stationName: string;
   measurements: StationMeasurement[];
   fallback?: StationFallback;
 }> {
-  const stationNames = await resolveStationCandidates(regionId);
+  const stationNames = await resolveStationCandidates(regionId, lat, lng);
 
   // 모든 후보를 병렬로 조회
   const results = await Promise.all(
@@ -347,7 +348,7 @@ async function resolveStationWithFallback(
       }
       return { stationName: name, measurements };
     }
-    console.warn(`[air] ${name} 측정소 데이터 비정상 (PM2.5·PM10 = 0)`);
+    console.warn(`[air] ${name} 측정소 데이터 비정상 (PM2.5·PM10 결측)`);
   }
 
   // 모든 측정소가 비정상이면 1순위 데이터라도 반환
@@ -355,11 +356,16 @@ async function resolveStationWithFallback(
 }
 
 /** regionId에서 측정소 후보 목록을 반환 (최대 3곳) */
-async function resolveStationCandidates(regionId: string): Promise<string[]> {
+async function resolveStationCandidates(regionId: string, lat?: number, lng?: number): Promise<string[]> {
   if (regionId.startsWith('station:')) {
     const primary = regionId.slice('station:'.length);
-    // station: 형태는 좌표 기반이므로 근처 측정소 목록을 가져올 수 없음
-    // 1곳만 반환
+    // lat/lng가 있으면 인근 측정소를 추가 후보로 활용 (primary 측정소 데이터 불량 시 fallback 가능)
+    if (lat != null && lng != null) {
+      const { tmX, tmY } = latLngToTM(lat, lng);
+      const nearby = await getNearbyStations(tmX, tmY).catch(() => [] as NearbyStation[]);
+      const candidates = [primary, ...nearby.map((s) => s.stationName).filter((n) => n !== primary)];
+      return candidates.slice(0, 3);
+    }
     return [primary];
   }
   if (regionId.startsWith('tm:')) {

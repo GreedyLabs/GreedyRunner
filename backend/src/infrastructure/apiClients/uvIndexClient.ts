@@ -109,7 +109,8 @@ async function fetchUVIndex(areaNo: string): Promise<Map<number, number>> {
 
   const offsets: Array<[string, number]> = [
     ['h0', 0], ['h3', 3], ['h6', 6], ['h9', 9],
-    ['h12', 12], ['h15', 15], ['h18', 18], ['h21', 21], ['h24', 24],
+    ['h12', 12], ['h15', 15], ['h18', 18], ['h21', 21],
+    // h24는 (baseHour + 24) % 24 = baseHour 로 h0와 같은 키가 되어 당일 값을 덮어쓰므로 제외
   ];
 
   for (const [key, offset] of offsets) {

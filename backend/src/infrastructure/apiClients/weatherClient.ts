@@ -169,7 +169,7 @@ async function fetchVilageFcst(nx: number, ny: number): Promise<Map<string, Map<
   const url = new URL(`${BASE_URL}/getVilageFcst`)
   url.searchParams.set('authKey', API_KEY)
   url.searchParams.set('dataType', 'JSON')
-  url.searchParams.set('numOfRows', '300')
+  url.searchParams.set('numOfRows', '1000')
   url.searchParams.set('pageNo', '1')
   url.searchParams.set('base_date', baseDate)
   url.searchParams.set('base_time', baseTime)

@@ -86,7 +86,7 @@ export function useLocation(): UseLocationReturn {
             : '현재 위치를 가져올 수 없습니다.'
         setState(prev => ({ ...prev, isLocating: false, error: message }))
       },
-      { timeout: 10000 }
+      { timeout: 10000, maximumAge: 60000 }
     )
   }, [])
 
