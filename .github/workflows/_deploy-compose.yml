@@ -2,13 +2,6 @@ name: Deploy Compose
 
 on:
   workflow_call:
-    inputs:
-      frontend_tag:
-        required: true
-        type: string
-      backend_tag:
-        required: true
-        type: string
     secrets:
       BACKEND_ENV:
         required: true
@@ -19,9 +12,6 @@ jobs:
     concurrency:
       group: deploy-greedyrunner
       cancel-in-progress: false
-    env:
-      FRONTEND_TAG: ${{ inputs.frontend_tag }}
-      BACKEND_TAG: ${{ inputs.backend_tag }}
     steps:
       - uses: actions/checkout@v6
 
@@ -37,11 +27,8 @@ jobs:
           printf '%s' "${{ secrets.BACKEND_ENV }}" > backend.env
           chmod 600 backend.env
 
-      - name: Pull images
-        run: docker compose pull
-
       - name: Deploy
-        run: docker compose up -d --remove-orphans
+        run: docker compose up -d --pull always --remove-orphans
 
       - name: Prune old images
         run: docker image prune -f
