@@ -77,7 +77,9 @@ airQualityRouter.get('/:regionId', async (req: Request, res: Response) => {
     }
 
     const data = await client.getAirQuality(parsed.data.regionId, lat, lng)
-    cache.set(cacheKey, { data, expiresAt: Date.now() + CACHE_TTL })
+    // 날씨 데이터가 불완전하면 1분 후 재시도 가능하도록 TTL을 단축
+    const ttl = data.serviceStatus.weather === 'ok' ? CACHE_TTL : 60_000
+    cache.set(cacheKey, { data, expiresAt: Date.now() + ttl })
     res.json(data)
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)

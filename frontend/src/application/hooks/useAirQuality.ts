@@ -39,7 +39,9 @@ export function useAirQuality(): UseAirQualityReturn {
     setState(prev => ({ ...prev, isLoading: true, error: null }))
     try {
       const data = await getAirQualityByRegion(regionId, lat, lng)
-      cacheRef.current.set(cacheKey, { data, expiresAt: Date.now() + CACHE_TTL })
+      // 날씨 데이터가 불완전하면 1분 후 재시도 가능하도록 TTL을 단축
+      const ttl = data.serviceStatus?.weather === 'ok' ? CACHE_TTL : 60_000
+      cacheRef.current.set(cacheKey, { data, expiresAt: Date.now() + ttl })
       setState({ data, isLoading: false, error: null })
     } catch (err) {
       setState(prev => ({

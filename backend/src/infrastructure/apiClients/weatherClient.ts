@@ -176,7 +176,8 @@ async function fetchVilageFcst(nx: number, ny: number): Promise<Map<string, Map<
   url.searchParams.set('nx', String(nx))
   url.searchParams.set('ny', String(ny))
 
-  const res = await fetchWithTimeout(url.toString())
+  // 단기예보는 1000행 응답으로 페이로드가 크므로 타임아웃을 넉넉하게 설정
+  const res = await fetchWithTimeout(url.toString(), 15000)
   if (!res.ok) throw new Error(`단기예보 HTTP ${res.status}`)
   const json = (await res.json()) as KmaResponse
   if (json.response.header.resultCode !== '00') {
