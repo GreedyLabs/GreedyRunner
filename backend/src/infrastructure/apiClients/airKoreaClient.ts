@@ -359,13 +359,10 @@ async function resolveStationWithFallback(
 async function resolveStationCandidates(regionId: string, lat?: number, lng?: number): Promise<string[]> {
   if (regionId.startsWith('station:')) {
     const primary = regionId.slice('station:'.length);
-    // lat/lng가 있으면 인근 측정소를 추가 후보로 활용 (primary 측정소 데이터 불량 시 fallback 가능)
-    if (lat != null && lng != null) {
-      const { tmX, tmY } = latLngToTM(lat, lng);
-      const nearby = await getNearbyStations(tmX, tmY).catch(() => [] as NearbyStation[]);
-      const candidates = [primary, ...nearby.map((s) => s.stationName).filter((n) => n !== primary)];
-      return candidates.slice(0, 3);
-    }
+    // station: 타입은 /by-coords에서 이미 getNearbyStations를 호출해 얻은 1순위 측정소다.
+    // 여기서 다시 getNearbyStations를 호출하면 동일 API를 연달아 2번 호출해 응답 지연이 배가된다.
+    // tm: 타입과 달리 좌표→측정소 변환이 이미 완료된 상태이므로 1곳만 반환한다.
+    void lat; void lng; // 향후 사용 가능성을 위해 파라미터 유지
     return [primary];
   }
   if (regionId.startsWith('tm:')) {
