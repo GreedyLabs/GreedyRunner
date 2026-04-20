@@ -80,6 +80,11 @@ export default defineConfig({
   ],
   server: {
     allowedHosts: ['localhost', 'filial-janett-intromittent.ngrok-free.dev'],
+    proxy: {
+      '/api': 'http://localhost:8000',
+      '/health': 'http://localhost:8000',
+      '/docs': 'http://localhost:8000',
+    },
   },
   preview: {
     allowedHosts: ['localhost', 'filial-janett-intromittent.ngrok-free.dev'],
