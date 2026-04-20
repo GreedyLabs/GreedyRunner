@@ -100,7 +100,42 @@ function calculateScore(m: AirQualityMetrics, w?: WeatherInfo, hour?: number): n
   // UV-열 복합 강제 감점 (가중치와 별개로 적용)
   const uvHeatBonus = uvHeatForcePenalty(w.temperature, w.uvIndex, w.humidity, hour)
 
-  return Math.max(0, Math.min(100, Math.round(100 - compoundPenalty - precipBonus - uvHeatBonus)))
+  const rawScore = Math.max(0, Math.min(100, Math.round(100 - compoundPenalty - precipBonus - uvHeatBonus)))
+  return applyExtremeCap(rawScore, m, w, hour)
+}
+
+/**
+ * 단일 항목이 극단적일 때 최종 점수의 상한을 제한한다.
+ * 가중치 합산만으로는 한 항목이 극심(예: PM2.5 > 75)이어도 다른 값이 좋으면
+ * '달리기 좋음'이 나올 수 있어, 실제 위험을 반영하지 못하는 문제를 보정한다.
+ */
+function applyExtremeCap(score: number, m: AirQualityMetrics, w?: WeatherInfo, hour?: number): number {
+  let cap = 100
+
+  // 미세먼지 — 매우 나쁨이면 bad, 나쁨이면 caution
+  if (m.pm25 > 75) cap = Math.min(cap, 35)
+  else if (m.pm25 > 35) cap = Math.min(cap, 55)
+
+  if (m.pm10 > 150) cap = Math.min(cap, 35)
+  else if (m.pm10 > 80) cap = Math.min(cap, 55)
+
+  if (!w) return Math.min(score, cap)
+
+  // 자외선 — 낮 시간대에만 (야간에는 물리적으로 0)
+  const isDaytime = hour === undefined || (hour >= 6 && hour < 20)
+  if (w.uvIndex != null && isDaytime) {
+    if (w.uvIndex >= 11) cap = Math.min(cap, 35)
+    else if (w.uvIndex >= 8) cap = Math.min(cap, 55)
+  }
+
+  // 강수 — 눈/진눈깨비는 노면 위험이 커 bad, 비는 caution
+  if (w.precipitation === 'snow' || w.precipitation === 'sleet') cap = Math.min(cap, 30)
+  else if (w.precipitation === 'rain') cap = Math.min(cap, 45)
+
+  // 극한 기온 — 영하 또는 35°C 이상
+  if (w.temperature <= 0 || w.temperature >= 35) cap = Math.min(cap, 30)
+
+  return Math.min(score, cap)
 }
 
 /**

@@ -68,7 +68,34 @@ interface NearbyStation {
   tm: number;
 }
 
+/**
+ * 주변 측정소 목록의 메모리 캐시.
+ * 같은 좌표로 `/by-coords` → `/api/v1/air-quality/station:xxx` 흐름이 이어질 때
+ * 두 번째 호출이 외부 API를 다시 타지 않게 한다. 비정상 측정소 폴백 시
+ * "이미 조회한 주변 측정소 후보"를 재사용하기 위한 근거 자료이기도 하다.
+ */
+const NEARBY_CACHE_TTL_MS = 60 * 60 * 1000; // 1시간
+const nearbyStationCache = new Map<string, { stations: NearbyStation[]; expiresAt: number }>();
+
+/** TM 좌표를 100m 격자로 반올림한 캐시 키 (좌표가 미세하게 달라도 히트) */
+function nearbyCacheKey(tmX: number, tmY: number): string {
+  return `${Math.round(tmX / 100)}:${Math.round(tmY / 100)}`;
+}
+
+function getCachedNearbyStations(tmX: number, tmY: number): NearbyStation[] | null {
+  const entry = nearbyStationCache.get(nearbyCacheKey(tmX, tmY));
+  if (!entry) return null;
+  if (entry.expiresAt < Date.now()) {
+    nearbyStationCache.delete(nearbyCacheKey(tmX, tmY));
+    return null;
+  }
+  return entry.stations;
+}
+
 async function getNearbyStations(tmX: number, tmY: number): Promise<NearbyStation[]> {
+  const cached = getCachedNearbyStations(tmX, tmY);
+  if (cached) return cached;
+
   const url = new URL(`${MSRS_BASE}/getNearbyMsrstnList`);
   url.searchParams.set('serviceKey', API_KEY);
   url.searchParams.set('returnType', 'json');
@@ -81,7 +108,12 @@ async function getNearbyStations(tmX: number, tmY: number): Promise<NearbyStatio
   const json = (await res.json()) as AirKoreaResponse<NearbyStation>;
   const { resultCode, resultMsg } = json.response.header;
   if (resultCode !== '00') throw new Error(`getNearbyMsrstnList API 오류: ${resultMsg}`);
-  return json.response.body.items ?? [];
+  const stations = json.response.body.items ?? [];
+  nearbyStationCache.set(nearbyCacheKey(tmX, tmY), {
+    stations,
+    expiresAt: Date.now() + NEARBY_CACHE_TTL_MS,
+  });
+  return stations;
 }
 
 interface TmCoordResult {
@@ -360,9 +392,16 @@ async function resolveStationCandidates(regionId: string, lat?: number, lng?: nu
   if (regionId.startsWith('station:')) {
     const primary = regionId.slice('station:'.length);
     // station: 타입은 /by-coords에서 이미 getNearbyStations를 호출해 얻은 1순위 측정소다.
-    // 여기서 다시 getNearbyStations를 호출하면 동일 API를 연달아 2번 호출해 응답 지연이 배가된다.
-    // tm: 타입과 달리 좌표→측정소 변환이 이미 완료된 상태이므로 1곳만 반환한다.
-    void lat; void lng; // 향후 사용 가능성을 위해 파라미터 유지
+    // 외부 API를 다시 타지 않고, 직전 호출에서 캐시된 주변 측정소 목록이 있을 때만
+    // 폴백 후보로 확장한다. 캐시 미스면 1곳만 반환해 기존 동작(직렬 타임아웃 없음)을 유지.
+    if (lat != null && lng != null) {
+      const { tmX, tmY } = latLngToTM(lat, lng);
+      const cached = getCachedNearbyStations(tmX, tmY);
+      if (cached && cached.length > 0) {
+        const candidates = [primary, ...cached.map((s) => s.stationName).filter((n) => n !== primary)];
+        return candidates.slice(0, 3);
+      }
+    }
     return [primary];
   }
   if (regionId.startsWith('tm:')) {
