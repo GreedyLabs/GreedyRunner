@@ -59,6 +59,12 @@ jobs:
             type=raw,value=${{ inputs.version }}
             type=raw,value=latest,enable={{is_default_branch}}
 
+      - name: Write build env file
+        if: ${{ secrets.BUILD_ENV != '' }}
+        run: |
+          printf '%s' "${{ secrets.BUILD_ENV }}" > build.env
+          chmod 600 build.env
+
       - name: Build and push
         uses: docker/build-push-action@v7
         with:
@@ -70,5 +76,9 @@ jobs:
           no-cache: ${{ inputs.no_cache }}
           cache-from: ${{ inputs.no_cache && '' || format('type=gha,scope={0}', inputs.component) }}
           cache-to: type=gha,mode=max,scope=${{ inputs.component }}
-          secrets: |
-            ${{ secrets.BUILD_ENV != '' && format('build_env={0}', secrets.BUILD_ENV) || '' }}
+          secret-files: |
+            ${{ secrets.BUILD_ENV != '' && 'build_env=build.env' || '' }}
+
+      - name: Clean up env file
+        if: always()
+        run: rm -f build.env
