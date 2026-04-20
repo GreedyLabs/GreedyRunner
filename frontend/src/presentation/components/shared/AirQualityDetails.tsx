@@ -15,11 +15,20 @@ interface ThresholdLevel {
   description: string  // 해당 수준 설명
 }
 
+/** 값이 결측일 때 사용하는 sentinel 등급 */
+const UNKNOWN_THRESHOLD: ThresholdLevel = {
+  max: Infinity,
+  label: '측정 불가',
+  color: 'text-gray-500 bg-gray-100',
+  description: '측정소 점검 등으로 데이터를 가져올 수 없습니다.',
+}
+
 interface MetricConfig {
   key: string
   label: string
   shortLabel: string
-  value: number
+  /** `null`이면 측정 불가(측정소 점검 등) */
+  value: number | null
   unit: string
   description: string   // 오염물질 설명
   healthEffect: string  // 건강 영향
@@ -68,7 +77,7 @@ export function AirQualityDetails({ metrics, weather }: AirQualityDetailsProps) 
       key: 'o3',
       label: '오존 (O₃)',
       shortLabel: '오존',
-      value: Math.round(metrics.o3 * 1000),
+      value: metrics.o3 == null ? null : Math.round(metrics.o3 * 1000),
       unit: 'ppb',
       description: '자동차·공장 배출가스가 자외선과 반응해 생성되는 2차 오염물질입니다. 맑고 더운 날 낮 시간대에 농도가 높아집니다.',
       healthEffect: '눈·코·기관지를 자극하며, 고농도에서는 폐 기능을 저하시킵니다. 러닝 중 호흡량이 많아 영향이 커집니다.',
@@ -85,7 +94,7 @@ export function AirQualityDetails({ metrics, weather }: AirQualityDetailsProps) 
       key: 'no2',
       label: '이산화질소 (NO₂)',
       shortLabel: '이산화질소',
-      value: Math.round(metrics.no2 * 1000),
+      value: metrics.no2 == null ? null : Math.round(metrics.no2 * 1000),
       unit: 'ppb',
       description: '주로 자동차 엔진, 화력발전소에서 배출됩니다. 오존과 미세먼지 생성의 전구물질이기도 합니다.',
       healthEffect: '기관지를 자극해 기침·호흡 곤란을 유발합니다. 장기 노출 시 천식 위험이 증가합니다.',
@@ -111,7 +120,9 @@ export function AirQualityDetails({ metrics, weather }: AirQualityDetailsProps) 
       <h3 className="font-bold text-gray-800 text-base mb-4">대기질 상세</h3>
       <div className="grid grid-cols-2 gap-3">
         {metricList.map(metric => {
-          const threshold = metric.thresholds.find(t => metric.value <= t.max)!
+          const threshold = metric.value == null
+            ? UNKNOWN_THRESHOLD
+            : metric.thresholds.find(t => metric.value! <= t.max)!
           const isSelected = selectedKey === metric.key
           return (
             <MetricItem
@@ -157,7 +168,9 @@ function MetricItem({ metric, threshold, isSelected, onClick }: MetricItemProps)
     >
       <p className="text-[11px] sm:text-xs text-gray-500 mb-1 truncate">{metric.shortLabel}</p>
       <div className="flex items-end gap-1 sm:gap-1.5 mb-2">
-        <span className="text-lg sm:text-xl font-bold text-gray-800">{metric.value}</span>
+        <span className="text-lg sm:text-xl font-bold text-gray-800">
+          {metric.value == null ? '—' : metric.value}
+        </span>
         <span className="text-[10px] sm:text-xs text-gray-400 mb-0.5">{metric.unit}</span>
       </div>
       <div className="flex items-center justify-between">
@@ -180,7 +193,9 @@ interface MetricDetailProps {
 }
 
 function MetricDetail({ metric }: MetricDetailProps) {
-  const currentThreshold = metric.thresholds.find(t => metric.value <= t.max)!
+  const currentThreshold = metric.value == null
+    ? UNKNOWN_THRESHOLD
+    : metric.thresholds.find(t => metric.value! <= t.max)!
 
   return (
     <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50/50 p-4 space-y-3">
@@ -205,7 +220,8 @@ function MetricDetail({ metric }: MetricDetailProps) {
               : i === 0
                 ? `0 ~ ${t.max} ${metric.unit}`
                 : `${prevMax} ~ ${t.max} ${metric.unit}`
-            const isCurrent = metric.value <= t.max &&
+            const isCurrent = metric.value != null &&
+              metric.value <= t.max &&
               (i === 0 || metric.value > metric.thresholds[i - 1].max)
             return (
               <div

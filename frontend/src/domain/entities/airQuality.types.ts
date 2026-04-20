@@ -1,13 +1,17 @@
-export type RunningStatus = 'great' | 'good' | 'caution' | 'bad' | 'worst'
+export type RunningStatus = 'great' | 'good' | 'caution' | 'bad' | 'worst' | 'unknown'
 
 export type PrecipitationType = 'none' | 'rain' | 'snow' | 'sleet'
 
+/**
+ * 측정값은 `null`이 "측정소 점검/결측"을 의미한다.
+ * `0`은 "실제 깨끗한 값"이므로 혼동하지 말 것.
+ */
 export interface AirQualityMetrics {
-  pm25: number   // μg/m³
-  pm10: number   // μg/m³
-  o3: number     // ppm
-  no2: number    // ppm
-  co: number     // ppm
+  pm25: number | null   // μg/m³
+  pm10: number | null   // μg/m³
+  o3: number | null     // ppm
+  no2: number | null    // ppm
+  co: number | null     // ppm
 }
 
 export interface WeatherInfo {

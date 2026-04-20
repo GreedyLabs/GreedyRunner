@@ -13,6 +13,7 @@ const STATUS_STYLES: Record<RunningStatus, string> = {
   caution: 'bg-amber-100 text-amber-700 ring-amber-200',
   bad:     'bg-orange-100 text-orange-700 ring-orange-200',
   worst:   'bg-red-100 text-red-700 ring-red-200',
+  unknown: 'bg-gray-100 text-gray-600 ring-gray-200',
 }
 
 export function Badge({ label, status, className }: BadgeProps) {

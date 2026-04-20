@@ -1,14 +1,19 @@
-export type RunningStatus = 'great' | 'good' | 'caution' | 'bad' | 'worst'
+export type RunningStatus = 'great' | 'good' | 'caution' | 'bad' | 'worst' | 'unknown'
 
+/**
+ * 측정값은 `null`이 "측정소 점검/결측"을 의미한다.
+ * `0`은 "실제로 0인 값(깨끗한 공기)"이므로 혼동하지 말 것.
+ */
 export interface AirQualityMetrics {
-  pm25: number
-  pm10: number
-  o3: number
-  no2: number
-  co: number
+  pm25: number | null
+  pm10: number | null
+  o3: number | null
+  no2: number | null
+  co: number | null
 }
 
 export interface RunningIndex {
+  /** 0~100. status가 'unknown'일 때는 0으로 반환되며 UI에서 별도 처리한다. */
   score: number
   status: RunningStatus
   label: string

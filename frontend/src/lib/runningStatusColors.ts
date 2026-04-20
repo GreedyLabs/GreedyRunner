@@ -11,7 +11,7 @@
  * 색상을 변경하려면 이 파일만 수정하면 됩니다.
  */
 
-export type RunningStatus = 'great' | 'good' | 'caution' | 'bad' | 'worst'
+export type RunningStatus = 'great' | 'good' | 'caution' | 'bad' | 'worst' | 'unknown'
 
 export interface StatusColorToken {
   /** 카드 배경 그라디언트 (bg-gradient-to-br와 함께 사용) */
@@ -75,6 +75,15 @@ export const STATUS_COLORS: Record<RunningStatus, StatusColorToken> = {
     textMuted: 'text-red-500',
     dot: 'bg-red-400',
     glow: 'shadow-[0_0_6px_rgba(239,68,68,0.6)]',
+  },
+  unknown: {
+    gradient: 'from-gray-400 to-gray-600',
+    ring: 'ring-gray-300',
+    bar: 'bg-gray-300',
+    text: 'text-gray-600',
+    textMuted: 'text-gray-500',
+    dot: 'bg-gray-400',
+    glow: 'shadow-[0_0_6px_rgba(156,163,175,0.5)]',
   },
 }
 

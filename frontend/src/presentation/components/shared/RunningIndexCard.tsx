@@ -24,6 +24,7 @@ const STATUS_CONTENT = {
   caution: { icon: '⚠️', answer: '주의하며 달리세요' },
   bad: { icon: '😷', answer: '달리기 자제 권장' },
   worst: { icon: '🚫', answer: '오늘은 쉬세요' },
+  unknown: { icon: '❔', answer: '측정 불가' },
 };
 
 export function RunningIndexCard({
@@ -97,16 +98,18 @@ export function RunningIndexCard({
             {runningIndex.message}
           </p>
 
-          {/* 점수 게이지 */}
+          {/* 점수 게이지 — 'unknown'일 때는 게이지를 비우고 점수 대신 '—'를 표시 */}
           <div className="mb-2">
             <div className="flex justify-between items-center mb-1.5">
               <span className="text-white/70 text-xs">러닝 지수</span>
-              <span className="text-white font-bold text-lg">{runningIndex.score}</span>
+              <span className="text-white font-bold text-lg">
+                {runningIndex.status === 'unknown' ? '—' : runningIndex.score}
+              </span>
             </div>
             <div className="h-2.5 bg-white/20 rounded-full overflow-hidden">
               <div
                 className="h-full bg-white rounded-full transition-all duration-1000"
-                style={{ width: `${runningIndex.score}%` }}
+                style={{ width: runningIndex.status === 'unknown' ? '0%' : `${runningIndex.score}%` }}
               />
             </div>
             <div className="flex justify-between mt-1">
@@ -128,7 +131,7 @@ export function RunningIndexCard({
             <AirChip label="미세" value={airQuality.pm10} unit="μg/m³" threshold={[30, 80, 150]} />
             <AirChip
               label="오존"
-              value={Math.round(airQuality.o3 * 1000)}
+              value={airQuality.o3 == null ? null : Math.round(airQuality.o3 * 1000)}
               unit="ppb"
               threshold={[30, 60, 90]}
             />
@@ -212,14 +215,17 @@ export function RunningIndexCard({
 
 interface AirChipProps {
   label: string;
-  value: number;
+  /** `null`이면 "측정 불가"로 표시 (측정소 결측 상태) */
+  value: number | null;
   unit: string;
   threshold: [number, number, number]; // [good, caution, bad]
 }
 
 function AirChip({ label, value, unit, threshold }: AirChipProps) {
-  const dot =
-    value <= threshold[0]
+  const isMissing = value == null;
+  const dot = isMissing
+    ? 'bg-gray-300'
+    : value <= threshold[0]
       ? 'bg-emerald-300'
       : value <= threshold[1]
         ? 'bg-amber-300'
@@ -234,7 +240,10 @@ function AirChip({ label, value, unit, threshold }: AirChipProps) {
         {label}
       </p>
       <p className="text-white font-bold text-xs sm:text-sm">
-        {value} <span className="font-normal text-white/60 text-[10px] sm:text-xs">{unit}</span>
+        {isMissing ? '—' : value}{' '}
+        <span className="font-normal text-white/60 text-[10px] sm:text-xs">
+          {isMissing ? '측정 불가' : unit}
+        </span>
       </p>
     </div>
   );

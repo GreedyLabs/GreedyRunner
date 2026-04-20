@@ -12,7 +12,10 @@ import type { WeatherMetrics } from '../../domain/entities/weather'
 const API_KEY = process.env.KMA_API_KEY ?? ''
 const BASE_URL = 'https://apihub.kma.go.kr/api/typ02/openApi/VilageFcstInfoService_2.0'
 
-async function fetchWithTimeout(url: string, timeoutMs = 8000): Promise<Response> {
+// 5초 이내 응답을 목표로 기상청 API 타임아웃을 4초로 제한.
+// 타임아웃 시 호출부(getAirQuality)는 weatherStatus='timeout'으로 표시하고
+// 대기질만으로 러닝 지수를 계산한다.
+async function fetchWithTimeout(url: string, timeoutMs = 4000): Promise<Response> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
@@ -176,8 +179,10 @@ async function fetchVilageFcst(nx: number, ny: number): Promise<Map<string, Map<
   url.searchParams.set('nx', String(nx))
   url.searchParams.set('ny', String(ny))
 
-  // 단기예보는 1000행 응답으로 페이로드가 크므로 타임아웃을 넉넉하게 설정
-  const res = await fetchWithTimeout(url.toString(), 15000)
+  // 5초 응답 목표에 맞춰 기본 타임아웃을 그대로 사용한다.
+  // 페이로드가 크지만 KMA API는 평소 1~2초 내 응답. 4초 초과하면 타임아웃 처리 후
+  // 대기질만으로 점수를 계산하는 쪽이 사용자 대기보다 낫다.
+  const res = await fetchWithTimeout(url.toString())
   if (!res.ok) throw new Error(`단기예보 HTTP ${res.status}`)
   const json = (await res.json()) as KmaResponse
   if (json.response.header.resultCode !== '00') {

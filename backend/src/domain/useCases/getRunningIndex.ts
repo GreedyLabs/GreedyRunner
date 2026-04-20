@@ -6,6 +6,7 @@ const STATUS_LABELS: Record<RunningStatus, string> = {
   caution: '주의 필요',
   bad:     '달리기 자제',
   worst:   '달리기 금지',
+  unknown: '측정 불가',
 }
 
 const STATUS_MESSAGES: Record<RunningStatus, string> = {
@@ -14,6 +15,15 @@ const STATUS_MESSAGES: Record<RunningStatus, string> = {
   caution: '민감한 분들은 주의하세요. 짧은 러닝 권장.',
   bad:     '오늘은 실내 운동을 권장합니다.',
   worst:   '야외 활동을 자제해 주세요.',
+  unknown: '측정소 점검 등으로 대기질 데이터를 가져올 수 없습니다.',
+}
+
+const UNKNOWN_RUNNING_INDEX: RunningIndex = {
+  score: 0,
+  status: 'unknown',
+  label: STATUS_LABELS.unknown,
+  message: STATUS_MESSAGES.unknown,
+  canRun: false,
 }
 
 /**
@@ -34,6 +44,13 @@ export function getRunningIndex(
   weather?: WeatherInfo,
   hour?: number,
 ): RunningIndex {
+  // 대기질 핵심 지표(PM2.5·PM10)가 결측이면 점수를 계산할 수 없다.
+  // 0으로 간주하면 "깨끗한 공기"로 오해석되어 잘못된 100점이 나올 수 있으므로,
+  // 'unknown' 상태로 반환해 UI가 별도로 표시하게 한다.
+  if (metrics.pm25 == null || metrics.pm10 == null) {
+    return UNKNOWN_RUNNING_INDEX
+  }
+
   let score = calculateScore(metrics, weather, hour)
 
   // 야간 감점 (23~04시) — 시야 불량·안전 위험으로 추천에서 밀려나도록
@@ -63,15 +80,20 @@ export function getRunningIndex(
 }
 
 function calculateScore(m: AirQualityMetrics, w?: WeatherInfo, hour?: number): number {
-  const pm25P = pm25Penalty(m.pm25)
-  const pm10P = pm10Penalty(m.pm10)
-  const o3P   = o3Penalty(m.o3, hour)
+  // 호출부(getRunningIndex)에서 pm25/pm10 null 케이스는 이미 'unknown' 반환으로 걸렀으므로
+  // 이 지점에서는 둘 다 number라고 가정할 수 있다. o3는 결측이면 0 페널티(미기여)로 처리.
+  const pm25P = pm25Penalty(m.pm25 as number)
+  const pm10P = pm10Penalty(m.pm10 as number)
+  const o3P   = m.o3 != null ? o3Penalty(m.o3, hour) : 0
 
   if (!w) {
-    // 기상 데이터 없으면 대기질만으로 계산 (기존 호환)
+    // 기상 데이터 없으면 대기질만으로 계산 (가중치 재분배: PM2.5 50%, PM10 30%, O3 20%)
     const basePenalty = pm25P * 0.5 + pm10P * 0.3 + o3P * 0.2
     const totalPenalty = applyCompoundPenalty(basePenalty, [pm25P, pm10P, o3P])
-    return Math.max(0, Math.min(100, Math.round(100 - totalPenalty)))
+    const rawScore = Math.max(0, Math.min(100, Math.round(100 - totalPenalty)))
+    // 극단값 cap은 기상 유무와 무관하게 적용되어야 한다.
+    // (예: PM10 > 150이면 기상 데이터가 없어도 '달리기 자제' 이하로 제한)
+    return applyExtremeCap(rawScore, m, undefined, hour)
   }
 
   const tempP   = temperaturePenalty(w.temperature)
@@ -113,11 +135,16 @@ function applyExtremeCap(score: number, m: AirQualityMetrics, w?: WeatherInfo, h
   let cap = 100
 
   // 미세먼지 — 매우 나쁨이면 bad, 나쁨이면 caution
-  if (m.pm25 > 75) cap = Math.min(cap, 35)
-  else if (m.pm25 > 35) cap = Math.min(cap, 55)
+  // (pm25/pm10 null은 getRunningIndex에서 'unknown'으로 걸러지므로 여기서는 number 보장)
+  if (m.pm25 != null) {
+    if (m.pm25 > 75) cap = Math.min(cap, 35)
+    else if (m.pm25 > 35) cap = Math.min(cap, 55)
+  }
 
-  if (m.pm10 > 150) cap = Math.min(cap, 35)
-  else if (m.pm10 > 80) cap = Math.min(cap, 55)
+  if (m.pm10 != null) {
+    if (m.pm10 > 150) cap = Math.min(cap, 35)
+    else if (m.pm10 > 80) cap = Math.min(cap, 55)
+  }
 
   if (!w) return Math.min(score, cap)
 

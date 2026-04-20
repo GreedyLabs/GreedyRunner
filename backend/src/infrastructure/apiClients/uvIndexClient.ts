@@ -14,7 +14,7 @@ import { latLngToAreaNo } from './areaNoLookup';
 const API_KEY = process.env.AIR_KOREA_API_KEY ?? '';
 const BASE_URL = 'https://apis.data.go.kr/1360000/LivingWthrIdxServiceV4';
 
-async function fetchWithTimeout(url: string, timeoutMs = 8000): Promise<Response> {
+async function fetchWithTimeout(url: string, timeoutMs = 4000): Promise<Response> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {

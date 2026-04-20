@@ -23,7 +23,10 @@ const API_KEY = process.env.AIR_KOREA_API_KEY ?? '';
 const MSRS_BASE = 'https://apis.data.go.kr/B552584/MsrstnInfoInqireSvc';
 const ARPL_BASE = 'https://apis.data.go.kr/B552584/ArpltnInforInqireSvc';
 
-async function fetchWithTimeout(url: string, timeoutMs = 8000): Promise<Response> {
+// 엔드포인트 전체 응답 시간을 5초 이내로 유지하기 위한 개별 API 타임아웃.
+// 캐시 미스 시 getNearbyStations → getStationMeasurements가 직렬로 실행되므로
+// 3500ms로 제한해 최악 7s까지 허용하되, 실 응답은 대부분 <1s.
+async function fetchWithTimeout(url: string, timeoutMs = 3500): Promise<Response> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
@@ -103,7 +106,9 @@ async function getNearbyStations(tmX: number, tmY: number): Promise<NearbyStatio
   url.searchParams.set('tmY', tmY.toFixed(6));
   url.searchParams.set('ver', '1.1');
 
-  const res = await fetchWithTimeout(url.toString());
+  // 이 호출은 이어지는 getStationMeasurements와 직렬이므로 짧게 제한한다(총 5s 예산).
+  // 실 응답은 대부분 <1s. 장애 시 빠르게 실패하고 캐시 폴백을 기대한다.
+  const res = await fetchWithTimeout(url.toString(), 1500);
   if (!res.ok) throw new Error(`getNearbyMsrstnList HTTP ${res.status}`);
   const json = (await res.json()) as AirKoreaResponse<NearbyStation>;
   const { resultCode, resultMsg } = json.response.header;
@@ -161,7 +166,8 @@ async function getStationMeasurements(stationName: string): Promise<StationMeasu
   url.searchParams.set('dataTerm', 'DAILY');
   url.searchParams.set('ver', '1.0');
 
-  const res = await fetchWithTimeout(url.toString());
+  // getNearbyStations(1.5s) 이후 직렬로 실행되므로 3s로 제한 — 총 4.5s 예산 내 완료.
+  const res = await fetchWithTimeout(url.toString(), 3000);
   if (!res.ok) throw new Error(`getMsrstnAcctoRltmMesureDnsty HTTP ${res.status}`);
   const json = (await res.json()) as AirKoreaResponse<StationMeasurement>;
   const { resultCode, resultMsg } = json.response.header;
@@ -330,12 +336,17 @@ export async function getAirQuality(
 
 // ── 내부 유틸 ──────────────────────────────────────────────
 
-/** 측정 데이터가 비정상(PM2.5·PM10 모두 결측("-") 또는 빈 값)인지 판별 */
+/**
+ * 측정 데이터가 비정상인지 판별.
+ * PM2.5·PM10 중 **하나라도** 결측이면 점수 계산에 큰 영향이 있으므로
+ * 비정상으로 판단해 폴백 측정소로 전환을 시도한다.
+ * (기존에는 AND 조건이어서 한쪽만 결측일 땐 폴백 없이 왜곡된 점수가 나갔다)
+ */
 function isMeasurementFaulty(measurements: StationMeasurement[]): boolean {
   if (measurements.length === 0) return true;
   const latest = measurements[0];
   const isMissing = (v: string) => v === '-' || v === '' || v == null;
-  return isMissing(latest.pm25Value) && isMissing(latest.pm10Value);
+  return isMissing(latest.pm25Value) || isMissing(latest.pm10Value);
 }
 
 /**
@@ -380,7 +391,7 @@ async function resolveStationWithFallback(
       }
       return { stationName: name, measurements };
     }
-    console.warn(`[air] ${name} 측정소 데이터 비정상 (PM2.5·PM10 결측)`);
+    console.warn(`[air] ${name} 측정소 데이터 비정상 (PM2.5 또는 PM10 결측)`);
   }
 
   // 모든 측정소가 비정상이면 1순위 데이터라도 반환
@@ -532,21 +543,29 @@ function buildAirQualityData(
 
 function parseMeasurement(item: StationMeasurement): AirQualityMetrics {
   return {
-    pm25: parseNum(item.pm25Value),
-    pm10: parseNum(item.pm10Value),
-    o3: roundTo(parseNum(item.o3Value), 3),
-    no2: roundTo(parseNum(item.no2Value), 3),
-    co: roundTo(parseNum(item.coValue), 2),
+    pm25: parseNumOrNull(item.pm25Value),
+    pm10: parseNumOrNull(item.pm10Value),
+    o3: roundOrNull(parseNumOrNull(item.o3Value), 3),
+    no2: roundOrNull(parseNumOrNull(item.no2Value), 3),
+    co: roundOrNull(parseNumOrNull(item.coValue), 2),
   };
 }
 
-function parseNum(v: string): number {
+/**
+ * 에어코리아 응답의 측정값은 결측 시 `"-"` 또는 `""`로 전달된다.
+ * 이를 `0`으로 변환하면 러닝 지수 계산에서 "매우 깨끗한 공기"로 오해석되어
+ * 점수가 실제와 반대로 100점에 가까워지는 버그가 생긴다.
+ * → 결측값은 반드시 `null`로 전파하여 상위 로직(getRunningIndex)에서
+ *   'unknown' 상태로 돌릴 수 있도록 한다.
+ */
+function parseNumOrNull(v: string | null | undefined): number | null {
+  if (v == null || v === '' || v === '-') return null;
   const n = parseFloat(v);
-  return isNaN(n) ? 0 : n;
+  return isNaN(n) ? null : n;
 }
 
-function roundTo(v: number, decimals: number): number {
-  return parseFloat(v.toFixed(decimals));
+function roundOrNull(v: number | null, decimals: number): number | null {
+  return v == null ? null : parseFloat(v.toFixed(decimals));
 }
 
 function parseHour(dataTime: string): number {
@@ -567,17 +586,20 @@ function getKstHour(d: Date): number {
 }
 
 function defaultMetrics(): AirQualityMetrics {
-  return { pm25: 0, pm10: 0, o3: 0, no2: 0, co: 0 };
+  return { pm25: null, pm10: null, o3: null, no2: null, co: null };
 }
 
+/** base 값이 null이면 예측값도 null(측정 불가) — 0으로 조작하지 않는다 */
 function predictMetrics(base: AirQualityMetrics, hour: number): AirQualityMetrics {
   const factor = isRushHour(hour) ? 1.4 : isEarlyMorning(hour) ? 0.6 : 1.0;
+  const scale = (v: number | null, f: number, decimals: number) =>
+    v == null ? null : parseFloat((v * f).toFixed(decimals));
   return {
-    pm25: roundTo(base.pm25 * factor, 1),
-    pm10: roundTo(base.pm10 * factor, 1),
-    o3: roundTo(base.o3 * (isRushHour(hour) ? 1.2 : factor), 3),
-    no2: roundTo(base.no2 * factor, 3),
-    co: roundTo(base.co * factor, 2),
+    pm25: scale(base.pm25, factor, 1),
+    pm10: scale(base.pm10, factor, 1),
+    o3:   scale(base.o3,   isRushHour(hour) ? 1.2 : factor, 3),
+    no2:  scale(base.no2,  factor, 3),
+    co:   scale(base.co,   factor, 2),
   };
 }
 
