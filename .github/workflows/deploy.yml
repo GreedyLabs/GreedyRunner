@@ -69,6 +69,8 @@ jobs:
       image: ${{ github.repository_owner }}/greedyrunner-be
       version: ${{ github.run_number }}
       no_cache: ${{ inputs.no_cache || false }}
+    secrets:
+      BUILD_ENV: ${{ secrets.BACKEND_BUILD_ENV }}
 
   deploy:
     needs: [resolve, build-frontend, build-backend]

@@ -26,8 +26,8 @@ on:
         default: false
     secrets:
       BUILD_ENV:
-        description: 'Optional build-time env file contents, mounted as secret id=build_env'
-        required: false
+        description: 'Build-time env file contents, mounted as secret id=build_env (pass empty string if unused)'
+        required: true
 
 jobs:
   build:
@@ -60,7 +60,6 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Write build env file
-        if: ${{ secrets.BUILD_ENV != '' }}
         run: |
           printf '%s' "${{ secrets.BUILD_ENV }}" > build.env
           chmod 600 build.env
@@ -77,7 +76,7 @@ jobs:
           cache-from: ${{ inputs.no_cache && '' || format('type=gha,scope={0}', inputs.component) }}
           cache-to: type=gha,mode=max,scope=${{ inputs.component }}
           secret-files: |
-            ${{ secrets.BUILD_ENV != '' && 'build_env=build.env' || '' }}
+            build_env=build.env
 
       - name: Clean up env file
         if: always()
