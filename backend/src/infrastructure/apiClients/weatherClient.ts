@@ -159,11 +159,23 @@ async function fetchUltraSrtNcst(nx: number, ny: number): Promise<Map<string, st
 
   const map = new Map<string, string>()
   for (const item of json.response.body.items?.item ?? []) {
-    if (item.obsrValue != null) {
+    if (item.obsrValue != null && item.obsrValue !== '' && item.obsrValue !== '-') {
       map.set(item.category, item.obsrValue)
     }
   }
   return map
+}
+
+/**
+ * KMA 응답 문자열을 number로 파싱. 결측(undefined/''/'-'/NaN)이면 null.
+ * 결측을 0으로 캐스팅하면 러닝 지수 계산에서 "영하 극한 추위"(temperature=0 →
+ * temperaturePenalty=100 + applyExtremeCap이 cap 30 적용) 또는 "극건조"(humidity=0)
+ * 로 잘못 해석되어 점수가 왜곡되므로 반드시 null로 전파한다.
+ */
+function parseKmaNumber(v: string | undefined): number | null {
+  if (v == null || v === '' || v === '-') return null
+  const n = parseFloat(v)
+  return isNaN(n) ? null : n
 }
 
 /** 단기예보 — 시간별 기온·습도·강수확률·풍속 */
@@ -203,17 +215,39 @@ async function fetchVilageFcst(nx: number, ny: number): Promise<Map<string, Map<
 // ── 공개 함수 ────────────────────────────────────────────────
 
 /**
- * 현재 날씨 조회 (초단기실황)
+ * 현재 날씨 조회 (초단기실황).
+ *
+ * 기온(T1H) 또는 습도(REH) 중 하나라도 결측이면 `WeatherDataUnavailableError`를
+ * throw해 호출자(airKoreaClient)가 weather=null로 처리하게 한다.
+ * (기존에는 0으로 폴백되어 러닝 지수가 "극한 추위/극건조"로 잘못 계산되는 버그가 있었다.)
+ *
+ * 풍속(WSD)은 결측 시 0으로 취급(페널티 0 → 영향 없음).
  */
 export async function getCurrentWeather(lat: number, lng: number): Promise<WeatherMetrics> {
   const { nx, ny } = latLngToGrid(lat, lng)
   const data = await fetchUltraSrtNcst(nx, ny)
 
+  const temperature = parseKmaNumber(data.get('T1H'))
+  const humidity = parseKmaNumber(data.get('REH'))
+  if (temperature == null || humidity == null) {
+    throw new WeatherDataUnavailableError(
+      `초단기실황 필수값 결측 (T1H=${data.get('T1H') ?? 'null'}, REH=${data.get('REH') ?? 'null'})`,
+    )
+  }
+
   return {
-    temperature: parseFloat(data.get('T1H') ?? '0'),
-    humidity: parseFloat(data.get('REH') ?? '0'),
-    windSpeed: parseFloat(data.get('WSD') ?? '0'),
+    temperature,
+    humidity,
+    windSpeed: parseKmaNumber(data.get('WSD')) ?? 0,
     precipitation: parsePrecipitationType(data.get('PTY') ?? '0'),
+  }
+}
+
+/** 기상 데이터 결측 표시용 에러. 호출자가 taxonomy로 구분해 처리할 수 있게 별도 클래스로 둔다. */
+export class WeatherDataUnavailableError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'WeatherDataUnavailableError'
   }
 }
 
@@ -246,10 +280,17 @@ export async function getHourlyWeather(lat: number, lng: number): Promise<Hourly
     if (!target) continue
     const hour = parseInt(time.slice(0, 2), 10)
 
+    const temperature = parseKmaNumber(cats.get('TMP') ?? cats.get('T1H'))
+    const humidity = parseKmaNumber(cats.get('REH'))
+    // 기온·습도 중 하나라도 결측이면 이 시각은 맵에 넣지 않는다.
+    // → 호출부(buildAirQualityData)에서 `wx ?? currentWx` 폴백이 자연스럽게 동작.
+    //   (0으로 캐스팅하면 러닝 지수 계산이 왜곡되기 때문)
+    if (temperature == null || humidity == null) continue
+
     target.set(hour, {
-      temperature: parseFloat(cats.get('TMP') ?? cats.get('T1H') ?? '0'),
-      humidity: parseFloat(cats.get('REH') ?? '0'),
-      windSpeed: parseFloat(cats.get('WSD') ?? '0'),
+      temperature,
+      humidity,
+      windSpeed: parseKmaNumber(cats.get('WSD')) ?? 0,
       precipitation: parsePrecipitationType(cats.get('PTY') ?? '0'),
     })
   }
