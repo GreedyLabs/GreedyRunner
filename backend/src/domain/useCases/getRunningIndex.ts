@@ -134,19 +134,14 @@ function calculateScore(m: AirQualityMetrics, w?: WeatherInfo, hour?: number): n
 function applyExtremeCap(score: number, m: AirQualityMetrics, w?: WeatherInfo, hour?: number): number {
   let cap = 100
 
-  // 미세먼지 — 매우 나쁨이면 bad, 나쁨이면 caution
+  // 미세먼지 — "나쁨" 구간 내에서도 "매우나쁨" 경계에 가까울수록 cap을 선형으로 낮춘다.
+  // 계단식(81~150 전부 cap 55) 방식은 경계값(예: PM10=139)을 과소평가하는 문제가 있어
+  // 구간 내에서도 부드럽게 35까지 내려가도록 보간한다.
   // (pm25/pm10 null은 getRunningIndex에서 'unknown'으로 걸러지므로 여기서는 number 보장)
-  if (m.pm25 != null) {
-    if (m.pm25 > 75) cap = Math.min(cap, 35)
-    else if (m.pm25 > 35) cap = Math.min(cap, 55)
-  }
+  if (m.pm25 != null) cap = Math.min(cap, pm25Cap(m.pm25))
+  if (m.pm10 != null) cap = Math.min(cap, pm10Cap(m.pm10))
 
-  if (m.pm10 != null) {
-    if (m.pm10 > 150) cap = Math.min(cap, 35)
-    else if (m.pm10 > 80) cap = Math.min(cap, 55)
-  }
-
-  if (!w) return Math.min(score, cap)
+  if (!w) return Math.round(Math.min(score, cap))
 
   // 자외선 — 낮 시간대에만 (야간에는 물리적으로 0)
   const isDaytime = hour === undefined || (hour >= 6 && hour < 20)
@@ -162,7 +157,35 @@ function applyExtremeCap(score: number, m: AirQualityMetrics, w?: WeatherInfo, h
   // 극한 기온 — 영하 또는 35°C 이상
   if (w.temperature <= 0 || w.temperature >= 35) cap = Math.min(cap, 30)
 
-  return Math.min(score, cap)
+  return Math.round(Math.min(score, cap))
+}
+
+/**
+ * PM2.5 값에 따른 최종 점수 상한.
+ * 35(나쁨 시작)에서 55, 75(매우나쁨 경계)에서 35로 선형 보간 후 이후는 35 고정.
+ *   PM2.5 =  36 → cap 55   (caution 상단)
+ *   PM2.5 =  55 → cap 45   (caution 하단)
+ *   PM2.5 =  75 → cap 35   (bad 진입)
+ *   PM2.5 >  75 → cap 35
+ */
+function pm25Cap(v: number): number {
+  if (v <= 35) return 100
+  if (v >= 75) return 35
+  return 55 - ((v - 35) / 40) * 20
+}
+
+/**
+ * PM10 값에 따른 최종 점수 상한.
+ * 80(나쁨 시작)에서 55, 150(매우나쁨 경계)에서 35로 선형 보간 후 이후는 35 고정.
+ *   PM10 =  81 → cap 55   (caution 상단)
+ *   PM10 = 139 → cap 38   (bad)
+ *   PM10 = 150 → cap 35   (bad)
+ *   PM10 > 150 → cap 35
+ */
+function pm10Cap(v: number): number {
+  if (v <= 80) return 100
+  if (v >= 150) return 35
+  return 55 - ((v - 80) / 70) * 20
 }
 
 /**
