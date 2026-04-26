@@ -297,11 +297,21 @@ export async function getHourlyWeather(lat: number, lng: number): Promise<Hourly
   return { today, tomorrow }
 }
 
+/**
+ * KMA 강수형태(PTY) 코드 → 내부 enum 매핑.
+ *
+ * 초단기실황: 0=없음, 1=비, 2=비/눈, 3=눈, 4=소나기 (+5=빗방울, 6=빗방울눈날림, 7=눈날림)
+ * 단기예보:   0=없음, 1=비, 2=비/눈, 3=눈, 5=빗방울, 6=빗방울눈날림, 7=눈날림
+ *
+ * 기존에는 5/6/7을 default로 흘려 'none'으로 처리되어, 단기예보에서 빗방울·눈날림
+ * 시간대가 강수 페널티/cap 없이 점수가 부풀려지는 버그가 있었다.
+ * → 빗방울(5)=rain, 빗방울눈날림(6)=sleet, 눈날림(7)=snow 로 매핑.
+ */
 function parsePrecipitationType(pty: string): 'none' | 'rain' | 'snow' | 'sleet' {
   switch (pty) {
-    case '1': case '4': return 'rain'   // 비, 소나기
-    case '2': return 'sleet'            // 비/눈
-    case '3': return 'snow'             // 눈
+    case '1': case '4': case '5': return 'rain'   // 비, 소나기, 빗방울
+    case '2': case '6': return 'sleet'            // 비/눈, 빗방울눈날림
+    case '3': case '7': return 'snow'             // 눈, 눈날림
     default: return 'none'
   }
 }

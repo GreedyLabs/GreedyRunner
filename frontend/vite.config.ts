@@ -2,6 +2,9 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import sitemap from 'vite-plugin-sitemap';
 import { VitePWA } from 'vite-plugin-pwa';
+import { RUNNING_TIPS } from './src/lib/runningTips';
+
+const tipRoutes = RUNNING_TIPS.map(tip => `/tips/${tip.id}`);
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -9,7 +12,7 @@ export default defineConfig({
     react(),
     sitemap({
       hostname: 'https://run.greedylabs.kr',
-      dynamicRoutes: ['/outfit'],
+      dynamicRoutes: ['/outfit', '/tips', ...tipRoutes],
     }),
     VitePWA({
       registerType: 'autoUpdate',

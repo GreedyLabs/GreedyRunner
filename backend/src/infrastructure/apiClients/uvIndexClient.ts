@@ -137,6 +137,17 @@ export interface UVData {
 }
 
 /**
+ * 시각 0~23 사이의 순환 거리.
+ * 단순 |a-b|로 계산하면 예: 현재 23시일 때 hourly가 [18,21,0,3,...]인 경우
+ * |0-23|=23이 되어 실제로는 1시간 차이인 0시가 선택되지 않고 21시가 선택되는 버그가 있었다.
+ * → min(|a-b|, 24-|a-b|)로 24시 순환을 반영.
+ */
+function circularHourDistance(a: number, b: number): number {
+  const d = Math.abs(a - b);
+  return Math.min(d, 24 - d);
+}
+
+/**
  * 좌표 → 자외선지수 조회.
  * 내부적으로 lat/lng → areaNo 변환 후 KMA API 호출.
  */
@@ -144,10 +155,10 @@ export async function getUVIndex(lat: number, lng: number): Promise<UVData> {
   const areaNo = latLngToAreaNo(lat, lng);
   const hourly = await fetchUVIndex(areaNo);
 
-  // 현재 시각에 가장 가까운 값 선택
+  // 현재 시각에 가장 가까운 값 선택 — 자정을 가로지르는 경우도 올바르게 처리
   const kstHour = nowKST().getHours();
   const nearestHour = [...hourly.keys()]
-    .sort((a, b) => Math.abs(a - kstHour) - Math.abs(b - kstHour))[0];
+    .sort((a, b) => circularHourDistance(a, kstHour) - circularHourDistance(b, kstHour))[0];
   const current = nearestHour !== undefined ? (hourly.get(nearestHour) ?? 0) : 0;
 
   return { current, hourly };
