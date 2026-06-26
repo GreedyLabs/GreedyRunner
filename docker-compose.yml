@@ -1,20 +1,31 @@
+name: greedyrunner
+
 services:
   backend:
     image: ghcr.io/greedylabs/greedyrunner-be:${BACKEND_TAG:-latest}
     container_name: greedyrunner-be
+    pull_policy: always
     restart: unless-stopped
     env_file:
       - backend.env
     environment:
       - TZ=Asia/Seoul
+    networks:
+      - internal
     ports:
       - "8001:8000"
 
   frontend:
     image: ghcr.io/greedylabs/greedyrunner-fe:${FRONTEND_TAG:-latest}
     container_name: greedyrunner-fe
+    pull_policy: always
     restart: unless-stopped
-    ports:
-      - "3001:80"
     depends_on:
       - backend
+    networks:
+      - internal
+    ports:
+      - "3001:80"
+
+networks:
+  internal:
