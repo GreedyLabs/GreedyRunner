@@ -81,6 +81,10 @@ jobs:
       needs.build-frontend.result != 'failure' &&
       needs.build-backend.result != 'failure' &&
       (needs.resolve.outputs.frontend == 'true' || needs.resolve.outputs.backend == 'true')
-    uses: ./.github/workflows/_deploy-compose.yml
-    secrets:
-      BACKEND_ENV: ${{ secrets.BACKEND_ENV }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Dockhand redeploy
+        uses: GreedyLabs/action-dockhand-webhook@v1
+        with:
+          url: ${{ secrets.DOCKHAND_WEBHOOK_URL }}
+          secret: ${{ secrets.DOCKHAND_WEBHOOK_SECRET }}
