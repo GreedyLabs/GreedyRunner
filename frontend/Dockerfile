@@ -15,5 +15,6 @@ RUN --mount=type=secret,id=build_env,target=/repo/frontend/.env \
 
 FROM nginx:1.27-alpine AS runtime
 COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
+COPY frontend/nginx-security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY --from=build /repo/frontend/dist /usr/share/nginx/html
 EXPOSE 80
