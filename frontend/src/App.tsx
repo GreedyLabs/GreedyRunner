@@ -5,7 +5,9 @@ import { HomePage } from './presentation/pages/HomePage'
 import { AvatarPreview } from './presentation/pages/AvatarPreview'
 import { RunningTipPage } from './presentation/pages/RunningTipPage'
 import { RunningTipsPage } from './presentation/pages/RunningTipsPage'
+import { NotFoundPage } from './presentation/pages/NotFoundPage'
 import { UmamiScript } from './presentation/components/shared/UmamiScript'
+import { Seo } from './presentation/components/shared/Seo'
 import { useAirQuality } from './application/hooks/useAirQuality'
 import { useLocation } from './application/hooks/useLocation'
 import type { Region } from './domain/entities/region.types'
@@ -28,6 +30,7 @@ function App() {
 
   return (
     <MainLayout>
+      <Seo />
       <UmamiScript />
       <Routes>
         <Route
@@ -48,6 +51,7 @@ function App() {
         <Route path="/outfit" element={<AvatarPreview currentWeather={airQuality.data?.current.weather} />} />
         <Route path="/tips" element={<RunningTipsPage />} />
         <Route path="/tips/:id" element={<RunningTipPage />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </MainLayout>
   )

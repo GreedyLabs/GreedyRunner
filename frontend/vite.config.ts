@@ -1,19 +1,12 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import sitemap from 'vite-plugin-sitemap';
 import { VitePWA } from 'vite-plugin-pwa';
-import { RUNNING_TIPS } from './src/lib/runningTips';
 
-const tipRoutes = RUNNING_TIPS.map(tip => `/tips/${tip.id}`);
-
+// sitemap.xml은 scripts/prerender.mjs가 실제 콘텐츠 날짜(lastmod) 기반으로 생성한다.
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react(),
-    sitemap({
-      hostname: 'https://run.greedylabs.kr',
-      dynamicRoutes: ['/outfit', '/tips', ...tipRoutes],
-    }),
     VitePWA({
       registerType: 'autoUpdate',
       // Service Worker가 캐시할 앱 껍데기 파일 목록 (자동 생성)

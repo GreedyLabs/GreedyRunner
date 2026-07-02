@@ -1,0 +1,119 @@
+# GreedyRunner (달려도 되나요?)
+
+> Korean running-weather & air-quality readiness app. Answers "Can I run right now?" using
+> live weather, AirKorea air-quality data, and a running-conditions score, plus a library
+> of running-technique articles. Site: https://run.greedylabs.kr (ko-KR).
+
+GreedyRunner (also known as "달려도 되나요?" / "Is it okay to run?") tells runners in Korea
+whether current weather and air-quality conditions are safe and comfortable for an outdoor run,
+via a real-time Running Index that blends temperature, humidity, wind, precipitation, PM2.5/PM10,
+and a same-day hourly timeline of the best running windows.
+
+## Core Tools
+
+- [Running Index (Home)](https://run.greedylabs.kr/): Live running-suitability score for the
+  user's current or searched location, based on weather + air quality, with an hourly timeline
+  of today's best times to run.
+- [Outfit Recommendation](https://run.greedylabs.kr/outfit): What to wear for a run today, based
+  on temperature, UV, wind, and precipitation.
+- [Running Tips Library](https://run.greedylabs.kr/tips): 44 short, practical running-technique
+  articles covering pacing, breathing, hydration, weather adaptation, gear, recovery, and injury
+  prevention.
+
+## Running Tips (44 articles, /tips/<slug>)
+
+- [Warm-Up Before Running](https://run.greedylabs.kr/tips/warm-up-before-run): Why a 5-minute
+  walk/jog warm-up reduces injury risk and how to structure it.
+- [Breathing Rhythm](https://run.greedylabs.kr/tips/breathing-rhythm): The 2-2 inhale/exhale
+  rhythm to prevent side stitches.
+- [Hydration Strategy](https://run.greedylabs.kr/tips/hydration-strategy): Drink before you're
+  thirsty — timing and volume (150-200ml every 20 min) for runs over 30 minutes.
+- [Cadence Improvement](https://run.greedylabs.kr/tips/cadence-improvement): Targeting 165-180
+  steps/minute to reduce impact injury vs. lengthening stride.
+- [Rest Day Importance](https://run.greedylabs.kr/tips/rest-day-importance): Why 2-3 rest days
+  per week are part of training, not laziness.
+- [Cold-Weather Running](https://run.greedylabs.kr/tips/cold-weather-running): Dressing and
+  warm-up adjustments for cold conditions.
+- [Hot-Weather Running](https://run.greedylabs.kr/tips/hot-weather-running): Pace and hydration
+  adjustments to avoid overheating.
+- [Running Shoes Fit](https://run.greedylabs.kr/tips/running-shoes-fit): Choosing shoes that fit —
+  afternoon sizing and toe-box space.
+- [Interval Training](https://run.greedylabs.kr/tips/interval-training): Weekly speed/recovery
+  intervals to break through pace plateaus.
+- [Post-Run Stretching](https://run.greedylabs.kr/tips/post-run-stretch): Key stretches
+  (calves, hamstrings, quads, hips) to reduce next-day soreness.
+- [Long Run Pace](https://run.greedylabs.kr/tips/long-run-pace): Long runs at conversational
+  pace, not race pace.
+- [Rainy-Day Running](https://run.greedylabs.kr/tips/rainy-day-running): Safety and gear
+  adjustments for running in the rain.
+- [Morning vs. Evening Running](https://run.greedylabs.kr/tips/morning-vs-evening): Trade-offs
+  between AM and PM training times.
+- [Protein After Running](https://run.greedylabs.kr/tips/protein-after-run): Post-run protein
+  timing and amounts for recovery.
+- [Running Form Basics](https://run.greedylabs.kr/tips/running-form-basics): Posture, foot strike,
+  and arm swing fundamentals.
+- [Foam Roller Usage](https://run.greedylabs.kr/tips/foam-roller-usage): How and when to use a
+  foam roller for recovery.
+- [Sleep and Performance](https://run.greedylabs.kr/tips/sleep-and-performance): Sleep's impact
+  on running recovery and performance.
+- [Energy Gels](https://run.greedylabs.kr/tips/energy-gels): When and how to use energy gels
+  during longer runs.
+- [Running with Music](https://run.greedylabs.kr/tips/music-running): Effects of music/cadence
+  syncing on running performance.
+- [Nose Breathing](https://run.greedylabs.kr/tips/nose-breathing): Benefits and limits of
+  nasal-only breathing while running.
+- [Belly Breathing](https://run.greedylabs.kr/tips/belly-breathing): Diaphragmatic breathing
+  technique for endurance.
+- [Uphill Technique](https://run.greedylabs.kr/tips/uphill-technique): Form adjustments for
+  running hills efficiently.
+- [Treadmill vs. Outdoor](https://run.greedylabs.kr/tips/treadmill-vs-outdoor): Differences in
+  effort and form between treadmill and outdoor running.
+- [Injury Prevention Strength Work](https://run.greedylabs.kr/tips/injury-prevention-strength):
+  Strength exercises that reduce common running injuries.
+- [Plantar Fasciitis](https://run.greedylabs.kr/tips/plantar-fasciitis): Causes and management of
+  plantar fasciitis in runners.
+- [Running Socks](https://run.greedylabs.kr/tips/running-socks): Sock features that prevent
+  blisters.
+- [GPS Watch Usage](https://run.greedylabs.kr/tips/gps-watch-usage): Getting accurate pace/distance
+  data from a running watch.
+- [Compression Gear](https://run.greedylabs.kr/tips/compression-gear): Evidence and use cases for
+  compression sleeves/socks.
+- [Caffeine and Performance](https://run.greedylabs.kr/tips/caffeine-performance): Caffeine timing
+  and dosage for a performance boost.
+- [Iron Deficiency in Runners](https://run.greedylabs.kr/tips/iron-deficiency): Why runners are
+  prone to low iron and what to watch for.
+- [Race-Day Nutrition](https://run.greedylabs.kr/tips/race-day-nutrition): What/when to eat before
+  and during a race.
+- [Mental Toughness](https://run.greedylabs.kr/tips/mental-toughness): Mental strategies for
+  pushing through difficult runs.
+- [8-Week Beginner Plan](https://run.greedylabs.kr/tips/beginner-plan): A run/walk progression
+  plan to reach 30 continuous minutes.
+- [Heart Rate Training](https://run.greedylabs.kr/tips/heart-rate-training): Using HR zones to
+  guide training intensity.
+- [Stretching Timing](https://run.greedylabs.kr/tips/stretching-timing): Why static stretching
+  belongs after, not before, a run.
+- [Winter Running Safety](https://run.greedylabs.kr/tips/winter-running-safety): Ice, visibility,
+  and cold-injury precautions.
+- [Heat Acclimatization](https://run.greedylabs.kr/tips/heat-acclimatization): How the body adapts
+  to running in heat over 1-2 weeks.
+- [Track Workouts](https://run.greedylabs.kr/tips/track-workout): Structuring interval sessions on
+  a track.
+- [Running Watch Heart Rate Accuracy](https://run.greedylabs.kr/tips/running-watch-heart-rate):
+  Limitations of wrist-based HR sensors.
+- [Post-Race Recovery](https://run.greedylabs.kr/tips/post-race-recovery): Recovery timeline and
+  actions after a race.
+- [Anti-Chafing](https://run.greedylabs.kr/tips/anti-chafing): Preventing and treating chafing on
+  long runs.
+- [Running at Altitude](https://run.greedylabs.kr/tips/running-in-altitude): Pace and adaptation
+  adjustments for altitude running.
+- [Running Log](https://run.greedylabs.kr/tips/running-log): Why and how to keep a training log.
+- [Cross-Training](https://run.greedylabs.kr/tips/cross-training): Non-running workouts that
+  support running performance.
+
+## Notes for AI Crawlers
+
+- All routes are prerendered to static HTML at build time — article text is available without
+  JavaScript execution.
+- Language: primarily Korean (ko-KR); article slugs and this index are in English for
+  machine-readability.
+- Contact: hailey@greedylabs.kr
