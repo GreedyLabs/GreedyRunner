@@ -1,18 +1,21 @@
 /**
- * 기상청 생활기상지수 API — 자외선지수 조회 (getUVIdxV4)
+ * 기상청 생활기상지수 API — 자외선지수 조회 (getUVIdxV5)
+ *
+ * 데이터셋: https://www.data.go.kr/data/15085288/openapi.do (생활기상지수 조회서비스)
+ * V2/V3는 폐기됐고 V4/V5가 동일 스키마로 서비스 중 — 가이드 기준 V5 사용.
  *
  * 발표 시각: 매일 06시, 18시 (KST)
  * 예보 범위: 발표 시각부터 +24시간 (3시간 간격: h0, h3, h6 … h24)
  * 등급: 0~2 낮음, 3~5 보통, 6~7 높음, 8~10 매우높음, 11+ 위험
  *
- * 환경변수: UV_API_KEY (공공데이터포털 서비스키)
+ * 환경변수: AIR_KOREA_API_KEY (공공데이터포털 서비스키 — 에어코리아와 공용)
  */
 
 import { latLngToAreaNo } from './areaNoLookup';
 
 // 공공데이터포털 서비스키 — 에어코리아와 동일한 포털 키 사용
 const API_KEY = process.env.AIR_KOREA_API_KEY ?? '';
-const BASE_URL = 'https://apis.data.go.kr/1360000/LivingWthrIdxServiceV4';
+const BASE_URL = 'https://apis.data.go.kr/1360000/LivingWthrIdxServiceV5';
 
 async function fetchWithTimeout(url: string, timeoutMs = 4000): Promise<Response> {
   const controller = new AbortController()
@@ -85,7 +88,7 @@ interface UVResponse {
 
 async function fetchUVIndex(areaNo: string): Promise<Map<number, number>> {
   const time = getUVBaseTime();
-  const url = new URL(`${BASE_URL}/getUVIdxV4`);
+  const url = new URL(`${BASE_URL}/getUVIdxV5`);
   url.searchParams.set('serviceKey', API_KEY);
   url.searchParams.set('dataType', 'JSON');
   url.searchParams.set('areaNo', areaNo);
