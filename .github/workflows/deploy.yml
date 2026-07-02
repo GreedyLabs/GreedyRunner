@@ -88,3 +88,18 @@ jobs:
         with:
           url: ${{ secrets.DOCKHAND_WEBHOOK_URL }}
           secret: ${{ secrets.DOCKHAND_WEBHOOK_SECRET }}
+
+  # 프론트엔드 배포 후 IndexNow(빙/네이버)에 sitemap URL 전체를 제출
+  indexnow:
+    needs: [resolve, deploy]
+    if: |
+      always() &&
+      !cancelled() &&
+      needs.deploy.result == 'success' &&
+      needs.resolve.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Ping IndexNow with sitemap URLs
+        run: node frontend/scripts/indexnow-ping.mjs

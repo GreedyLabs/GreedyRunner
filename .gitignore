@@ -15,3 +15,5 @@ backend/.env
 .claude/
 
 IMPROVEMENTS.md
+# SSR 프리렌더 중간 산출물
+frontend/dist-ssr/

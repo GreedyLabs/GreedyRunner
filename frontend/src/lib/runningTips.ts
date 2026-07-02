@@ -1,6 +1,10 @@
 export interface RunningTip {
   id: string
   category: '페이스' | '기상' | '영양' | '장비' | '회복' | '호흡'
+  /** 최초 발행일 (ISO date) — sitemap lastmod, Article 구조화 데이터에 사용 */
+  publishedAt: string
+  /** 마지막 내용 수정일 — 내용을 고치면 갱신. 없으면 publishedAt 사용 */
+  updatedAt?: string
   emoji: string
   title: string
   /** 홈 카드에 표시되는 2~3줄 요약 */
@@ -13,6 +17,7 @@ export const RUNNING_TIPS: RunningTip[] = [
   {
     id: 'warm-up-before-run',
     category: '페이스',
+    publishedAt: '2026-04-14',
     emoji: '🦵',
     title: '달리기 전 5분 워밍업의 힘',
     summary: '바로 전력질주하면 부상 위험이 높아집니다. 처음 5분은 빠르게 걷거나 가벼운 조깅으로 시작해 심박수를 서서히 올려주세요. 근육이 충분히 데워지면 부상 없이 더 멀리 달릴 수 있습니다.',
@@ -30,6 +35,7 @@ export const RUNNING_TIPS: RunningTip[] = [
   {
     id: 'breathing-rhythm',
     category: '호흡',
+    publishedAt: '2026-04-14',
     emoji: '💨',
     title: '2-2 호흡 리듬으로 사이드 스티치 없애기',
     summary: '옆구리 통증(사이드 스티치)의 주원인은 불규칙한 호흡입니다. 두 걸음 들이쉬고 두 걸음 내쉬는 "2-2 리듬"을 유지하면 횡격막 피로를 줄이고 페이스를 오래 유지할 수 있어요.',
@@ -50,6 +56,7 @@ export const RUNNING_TIPS: RunningTip[] = [
   {
     id: 'hydration-strategy',
     category: '영양',
+    publishedAt: '2026-04-14',
     emoji: '💧',
     title: '목마르기 전에 마셔라: 수분 보충 타이밍',
     summary: '목이 마르다는 느낌은 이미 1~2% 탈수가 진행된 신호입니다. 30분 이상 달린다면 20분마다 150~200ml씩 미리 마시는 것이 성능 유지의 핵심입니다.',
@@ -73,6 +80,7 @@ export const RUNNING_TIPS: RunningTip[] = [
   {
     id: 'cadence-improvement',
     category: '페이스',
+    publishedAt: '2026-04-14',
     emoji: '👟',
     title: '분당 180보: 부상을 줄이는 케이던스 목표',
     summary: '보폭을 늘리는 것보다 걸음 수(케이던스)를 높이는 게 부상 예방에 훨씬 효과적입니다. 분당 165~180보를 목표로 하면 무릎과 발목에 가해지는 충격을 크게 줄일 수 있어요.',
@@ -93,6 +101,7 @@ export const RUNNING_TIPS: RunningTip[] = [
   {
     id: 'rest-day-importance',
     category: '회복',
+    publishedAt: '2026-04-14',
     emoji: '😴',
     title: '쉬는 날이 실력을 키운다',
     summary: '근육은 달리는 동안이 아니라 쉬는 동안 강해집니다. 주 2~3일의 휴식일은 게으름이 아니라 훈련의 일부입니다. 충분한 회복 없이는 오히려 성능이 떨어집니다.',
@@ -117,6 +126,7 @@ export const RUNNING_TIPS: RunningTip[] = [
   {
     id: 'cold-weather-running',
     category: '기상',
+    publishedAt: '2026-04-14',
     emoji: '🥶',
     title: '추운 날 달리기: 옷 한 겹을 덜 입어라',
     summary: '체감온도보다 10°C 더 따뜻하게 입으면 딱 맞습니다. 달리기 시작 직후 조금 춥게 느껴지는 게 정상입니다. 지나치게 껴입으면 땀이 차고 오히려 체온 유지가 어려워집니다.',
@@ -139,6 +149,7 @@ export const RUNNING_TIPS: RunningTip[] = [
   {
     id: 'hot-weather-running',
     category: '기상',
+    publishedAt: '2026-04-14',
     emoji: '☀️',
     title: '더운 날 러닝: 페이스를 늦추는 것이 전략이다',
     summary: '기온이 10°C 오를 때마다 1km당 약 20~30초 페이스가 느려지는 건 정상입니다. 더운 날 평소 페이스를 고집하면 과열과 탈수로 이어집니다. 느리게 달리는 게 오히려 올바른 전략입니다.',
@@ -158,6 +169,7 @@ export const RUNNING_TIPS: RunningTip[] = [
   {
     id: 'running-shoes-fit',
     category: '장비',
+    publishedAt: '2026-04-14',
     emoji: '👟',
     title: '러닝화는 오후에 사야 하는 이유',
     summary: '발은 하루 동안 활동하면서 부피가 커집니다. 오전에 맞는 신발이 오후 달리기 중에는 꽉 끼어 물집을 만들 수 있어요. 러닝화는 오후 3~6시 사이에, 앞코에 손가락 한 마디 여유를 두고 구매하세요.',
@@ -180,6 +192,7 @@ export const RUNNING_TIPS: RunningTip[] = [
   {
     id: 'interval-training',
     category: '페이스',
+    publishedAt: '2026-04-14',
     emoji: '⚡',
     title: '인터벌 트레이닝으로 속도 올리기',
     summary: '매번 같은 속도로만 달리면 실력이 정체됩니다. 빠르게 달리는 구간과 회복 구간을 반복하는 인터벌 트레이닝을 주 1회 추가하면 심폐 능력과 속도가 눈에 띄게 향상됩니다.',
@@ -202,6 +215,7 @@ export const RUNNING_TIPS: RunningTip[] = [
   {
     id: 'post-run-stretch',
     category: '회복',
+    publishedAt: '2026-04-14',
     emoji: '🧘',
     title: '달리기 후 반드시 해야 할 스트레칭 4가지',
     summary: '달리기를 멈추자마자 앉거나 눕지 마세요. 5분만 걸으며 심박수를 내리고, 종아리·햄스트링·대퇴사두·고관절을 각 30초씩 스트레칭하면 다음 날 통증이 크게 줄어듭니다.',
@@ -226,6 +240,7 @@ export const RUNNING_TIPS: RunningTip[] = [
   {
     id: 'long-run-pace',
     category: '페이스',
+    publishedAt: '2026-04-14',
     emoji: '🐢',
     title: '장거리는 생각보다 훨씬 천천히 달려야 한다',
     summary: '장거리 훈련의 목적은 속도가 아닌 유산소 기반 강화입니다. 옆 사람과 대화가 가능한 속도, 즉 최대 심박수의 65~75% 수준이 적절합니다. 너무 빠르면 회복에 이틀이 넘게 걸립니다.',
@@ -247,6 +262,7 @@ export const RUNNING_TIPS: RunningTip[] = [
   {
     id: 'rainy-day-running',
     category: '기상',
+    publishedAt: '2026-04-14',
     emoji: '🌧️',
     title: '비 오는 날 달리기: 오히려 좋은 이유',
     summary: '비는 체온을 낮춰줘서 더운 계절엔 오히려 달리기 좋은 조건이 됩니다. 단, 낙뢰가 없고 체감온도가 10°C 이상이라면 문제없습니다. 방수 모자와 밝은 색 옷만 준비하면 됩니다.',
@@ -273,6 +289,7 @@ export const RUNNING_TIPS: RunningTip[] = [
   {
     id: 'morning-vs-evening',
     category: '기상',
+    publishedAt: '2026-04-14',
     emoji: '🌅',
     title: '아침 vs 저녁 달리기, 어느 쪽이 더 좋을까?',
     summary: '아침 달리기는 공복 지방 연소와 하루 에너지 부스팅에 좋고, 저녁 달리기는 근력과 폐활량이 최고조인 시간대입니다. 어느 쪽이든 꾸준히 할 수 있는 시간을 선택하는 게 정답입니다.',
@@ -300,6 +317,7 @@ export const RUNNING_TIPS: RunningTip[] = [
   {
     id: 'protein-after-run',
     category: '영양',
+    publishedAt: '2026-04-14',
     emoji: '🥚',
     title: '달리기 후 30분이 근육 회복의 골든 타임',
     summary: '달리기가 끝난 후 30분 내에 단백질 20~25g을 섭취하면 근육 회복 속도가 크게 빨라집니다. 닭가슴살, 계란, 그릭요거트, 단백질 쉐이크 모두 좋은 선택입니다.',
@@ -325,6 +343,7 @@ export const RUNNING_TIPS: RunningTip[] = [
   {
     id: 'running-form-basics',
     category: '페이스',
+    publishedAt: '2026-04-14',
     emoji: '🏃',
     title: '올바른 러닝 자세 5가지 체크포인트',
     summary: '자세가 나쁘면 같은 거리를 달려도 더 많은 에너지를 씁니다. 시선은 15m 앞, 어깨는 귀에서 멀리, 팔꿈치는 90도, 발은 엉덩이 아래 착지, 몸통은 약간 앞으로 기울이는 게 핵심입니다.',
@@ -352,6 +371,7 @@ export const RUNNING_TIPS: RunningTip[] = [
   {
     id: 'foam-roller-usage',
     category: '회복',
+    publishedAt: '2026-04-14',
     emoji: '🪵',
     title: '폼롤러 10분으로 다음 날 근육통 절반 줄이기',
     summary: '달리기 후 폼롤러로 종아리, 허벅지, 엉덩이를 각 2분씩 굴려주면 근막 유착을 풀어 혈류를 개선합니다. 뭉친 부위에서 천천히 멈추는 게 빠르게 왔다 갔다 하는 것보다 훨씬 효과적입니다.',
@@ -379,6 +399,7 @@ export const RUNNING_TIPS: RunningTip[] = [
   {
     id: 'sleep-and-performance',
     category: '회복',
+    publishedAt: '2026-04-14',
     emoji: '🌙',
     title: '수면이 모든 보충제보다 낫다',
     summary: '하루 7시간 미만 수면은 러닝 성능을 25%까지 저하시킵니다. 반대로 수면을 8~9시간으로 늘리면 속도, 지구력, 반응속도가 모두 향상된다는 연구가 있습니다. 가장 저렴하고 강력한 회복 도구입니다.',
@@ -405,6 +426,7 @@ export const RUNNING_TIPS: RunningTip[] = [
   {
     id: 'energy-gels',
     category: '영양',
+    publishedAt: '2026-04-14',
     emoji: '🍯',
     title: '에너지 젤, 언제 어떻게 먹어야 할까?',
     summary: '에너지 젤은 90분 이상 달릴 때 유효합니다. 배가 고프다고 느낄 때는 이미 늦습니다. 45~60분마다 미리 섭취하고, 반드시 물과 함께 먹어야 위장 장애를 예방할 수 있습니다.',
@@ -428,6 +450,7 @@ export const RUNNING_TIPS: RunningTip[] = [
   {
     id: 'music-running',
     category: '페이스',
+    publishedAt: '2026-04-14',
     emoji: '🎧',
     title: '음악 BPM을 케이던스에 맞추면 자동으로 페이스가 된다',
     summary: '달리기 목표 케이던스(분당 170~180보)에 맞는 BPM의 음악을 틀면 의식하지 않아도 리듬에 맞춰 달리게 됩니다. Spotify의 러닝 플레이리스트나 BPM 검색 도구를 활용해보세요.',
@@ -454,6 +477,7 @@ export const RUNNING_TIPS: RunningTip[] = [
   {
     id: 'nose-breathing',
     category: '호흡',
+    publishedAt: '2026-04-14',
     emoji: '👃',
     title: '코로 숨 쉬면 지구력이 올라가는 이유',
     summary: '코 호흡은 공기를 따뜻하게 하고 수분을 보존해 기관지를 보호합니다. 처음엔 불편하지만 익숙해지면 산소 효율이 높아지고 피로감이 줄어듭니다. 페이스를 늦추더라도 코 호흡을 먼저 습관화하세요.',
@@ -474,6 +498,7 @@ export const RUNNING_TIPS: RunningTip[] = [
   {
     id: 'belly-breathing',
     category: '호흡',
+    publishedAt: '2026-04-14',
     emoji: '🫁',
     title: '가슴이 아닌 배로 숨 쉬어야 하는 이유',
     summary: '가슴 호흡은 폐 아랫부분을 거의 사용하지 않아 산소 흡입량이 30% 가량 줄어듭니다. 배가 나왔다 들어가는 복식 호흡을 달리면서 의식적으로 연습하면 피로감이 눈에 띄게 줄어듭니다.',
@@ -495,6 +520,7 @@ export const RUNNING_TIPS: RunningTip[] = [
   {
     id: 'uphill-technique',
     category: '페이스',
+    publishedAt: '2026-04-14',
     emoji: '⛰️',
     title: '오르막에서 페이스를 유지하는 기술',
     summary: '오르막에서 같은 속도를 유지하려다 에너지를 다 써버리는 실수를 피하세요. 속도가 아닌 노력 강도(심박수)를 일정하게 유지하는 게 핵심입니다. 보폭을 줄이고 팔을 더 적극적으로 사용하세요.',
@@ -515,6 +541,7 @@ export const RUNNING_TIPS: RunningTip[] = [
   {
     id: 'treadmill-vs-outdoor',
     category: '페이스',
+    publishedAt: '2026-04-14',
     emoji: '🏋️',
     title: '트레드밀과 야외 달리기의 차이를 알고 활용하기',
     summary: '트레드밀은 날씨와 무관하게 달릴 수 있고 페이스 조절이 쉽지만, 야외 달리기보다 근육 사용 패턴이 다릅니다. 트레드밀 1% 경사 설정이 야외 달리기와 가장 유사한 강도를 만들어줍니다.',
@@ -538,6 +565,7 @@ export const RUNNING_TIPS: RunningTip[] = [
   {
     id: 'injury-prevention-strength',
     category: '회복',
+    publishedAt: '2026-04-14',
     emoji: '💪',
     title: '달리기 부상의 80%는 근력 부족에서 온다',
     summary: '러너의 무릎, 장경인대 증후군, 족저근막염 대부분은 달리기 자체보다 주변 근육 약화가 원인입니다. 주 2회 30분의 하체 근력 운동이 달리기 부상을 크게 줄여줍니다.',
@@ -563,6 +591,7 @@ export const RUNNING_TIPS: RunningTip[] = [
   {
     id: 'plantar-fasciitis',
     category: '회복',
+    publishedAt: '2026-04-14',
     emoji: '🦶',
     title: '족저근막염, 아침 첫 발걸음이 아프다면',
     summary: '아침에 일어나 첫 걸음을 내딛을 때 발뒤꿈치가 찌르는 듯 아프다면 족저근막염을 의심하세요. 조기에 스트레칭과 아이싱으로 관리하지 않으면 회복에 수개월이 걸릴 수 있습니다.',
@@ -593,6 +622,7 @@ export const RUNNING_TIPS: RunningTip[] = [
   {
     id: 'running-socks',
     category: '장비',
+    publishedAt: '2026-04-14',
     emoji: '🧦',
     title: '러닝 양말이 일반 양말과 다른 이유',
     summary: '면 양말은 땀을 흡수하면 무거워지고 마찰이 커져 물집의 원인이 됩니다. 기능성 러닝 양말은 수분을 외부로 배출하고 발가락 사이 패딩으로 물집을 방지합니다. 러닝화만큼 중요한 투자입니다.',
@@ -621,6 +651,7 @@ export const RUNNING_TIPS: RunningTip[] = [
   {
     id: 'gps-watch-usage',
     category: '장비',
+    publishedAt: '2026-04-14',
     emoji: '⌚',
     title: 'GPS 워치 데이터, 어떻게 읽어야 할까?',
     summary: 'GPS 워치가 보여주는 수치 중 가장 중요한 건 페이스와 심박수입니다. VO2 max, 회복 시간 추정치는 참고용이지만, 심박수 구간 훈련은 실제 성능 향상에 직결됩니다.',
@@ -647,6 +678,7 @@ GPS를 항상 켜두면 배터리 소모가 큽니다. 훈련 중에만 GPS를 �
   {
     id: 'compression-gear',
     category: '장비',
+    publishedAt: '2026-04-14',
     emoji: '🩱',
     title: '압박 스타킹·타이츠가 달리기에 주는 실제 효과',
     summary: '압박 의류는 정맥 혈류를 개선해 근육 피로를 늦추고 회복을 빠르게 합니다. 달리는 중보다 달리고 난 뒤 착용이 더 효과적이라는 연구가 많습니다. 특히 장거리 후 3~4시간 착용을 권장합니다.',
@@ -674,6 +706,7 @@ GPS를 항상 켜두면 배터리 소모가 큽니다. 훈련 중에만 GPS를 �
   {
     id: 'caffeine-performance',
     category: '영양',
+    publishedAt: '2026-04-14',
     emoji: '☕',
     title: '커피 한 잔이 달리기 성능을 3~5% 높이는 이유',
     summary: '카페인은 FDA가 인정한 운동 수행 능력 향상 물질입니다. 달리기 45~60분 전 체중 1kg당 3~6mg 섭취(체중 60kg 기준 아메리카노 1~2잔)가 지구력과 집중력을 향상시킵니다.',
@@ -698,6 +731,7 @@ GPS를 항상 켜두면 배터리 소모가 큽니다. 훈련 중에만 GPS를 �
   {
     id: 'iron-deficiency',
     category: '영양',
+    publishedAt: '2026-04-14',
     emoji: '🥩',
     title: '이유 없이 피곤한 러너, 철분 부족을 확인하세요',
     summary: '달리기는 발바닥 충격으로 적혈구가 파괴되어 철분 손실이 일반인보다 많습니다. 특히 여성 러너는 더 취약합니다. 훈련량은 그대로인데 기록이 안 나온다면 철분 검사를 받아보세요.',
@@ -729,6 +763,7 @@ GPS를 항상 켜두면 배터리 소모가 큽니다. 훈련 중에만 GPS를 �
   {
     id: 'race-day-nutrition',
     category: '영양',
+    publishedAt: '2026-04-14',
     emoji: '🍌',
     title: '레이스 당일 아침 식사, 무엇을 얼마나 먹어야 할까?',
     summary: '레이스 3~4시간 전에 탄수화물 위주의 친숙한 식사를 하세요. 새로운 음식은 절대 금물입니다. 바나나, 오트밀, 토스트처럼 소화가 빠르고 평소에 먹던 음식이 가장 안전합니다.',
@@ -760,6 +795,7 @@ GPS를 항상 켜두면 배터리 소모가 큽니다. 훈련 중에만 GPS를 �
   {
     id: 'mental-toughness',
     category: '페이스',
+    publishedAt: '2026-04-14',
     emoji: '🧠',
     title: '달리기에서 포기하고 싶을 때 이겨내는 심리 기술',
     summary: '"조금만 더"가 아닌 구체적인 목표 분할이 효과적입니다. 전체 거리를 한꺼번에 생각하지 말고 다음 1km, 다음 신호등, 다음 전봇대까지만 달리는 전략이 완주율을 크게 높입니다.',
@@ -782,6 +818,7 @@ GPS를 항상 켜두면 배터리 소모가 큽니다. 훈련 중에만 GPS를 �
   {
     id: 'beginner-plan',
     category: '페이스',
+    publishedAt: '2026-04-14',
     emoji: '📅',
     title: '처음 시작하는 러너를 위한 8주 계획',
     summary: '아무 준비 없이 매일 달리면 2주도 안 돼 포기하게 됩니다. 걷기와 달리기를 번갈아 하는 8주 프로그램으로 시작하면 부상 없이 30분 연속 달리기가 가능해집니다.',
@@ -808,6 +845,7 @@ GPS를 항상 켜두면 배터리 소모가 큽니다. 훈련 중에만 GPS를 �
   {
     id: 'heart-rate-training',
     category: '페이스',
+    publishedAt: '2026-04-14',
     emoji: '❤️',
     title: '심박수 구간 훈련: 느리게 달려야 빨라진다',
     summary: '대부분의 훈련은 Zone 2(최대 심박수의 60~70%)에서 해야 합니다. 너무 힘들게 달리면 회복이 늦어지고 정작 빠르게 달려야 할 때 에너지가 없습니다. 80%는 쉽게, 20%만 강하게가 원칙입니다.',
@@ -838,6 +876,7 @@ Zone 2 훈련은 처음에 답답할 정도로 느립니다. 하지만 4~6주 �
   {
     id: 'stretching-timing',
     category: '회복',
+    publishedAt: '2026-04-14',
     emoji: '🤸',
     title: '정적 스트레칭은 달리기 전에 하면 오히려 역효과',
     summary: '달리기 전 정적 스트레칭(자세 유지형)은 근육 탄성을 일시적으로 낮춰 부상 위험을 높이고 성능을 저하시킵니다. 달리기 전엔 동적 스트레칭, 달리기 후엔 정적 스트레칭이 원칙입니다.',
@@ -863,6 +902,7 @@ Zone 2 훈련은 처음에 답답할 정도로 느립니다. 하지만 4~6주 �
   {
     id: 'winter-running-safety',
     category: '기상',
+    publishedAt: '2026-04-14',
     emoji: '❄️',
     title: '겨울 달리기 안전 수칙: 빙판·저체온증 대비',
     summary: '겨울 달리기에서 가장 위험한 것은 추위가 아닌 빙판과 저체온증입니다. 출발 전 날씨를 확인하고, 눈이나 비가 온 후 새벽에는 보도 빙판에 특히 주의해야 합니다. 주머니에 손을 넣고 달리는 것은 낙상 위험을 높입니다.',
@@ -889,6 +929,7 @@ Zone 2 훈련은 처음에 답답할 정도로 느립니다. 하지만 4~6주 �
   {
     id: 'heat-acclimatization',
     category: '기상',
+    publishedAt: '2026-04-14',
     emoji: '🔥',
     title: '더운 계절 첫 2주가 가장 힘든 이유: 열 적응',
     summary: '봄에서 여름으로 바뀌는 첫 2주는 같은 페이스인데도 훨씬 힘들게 느껴집니다. 이는 몸이 더위에 적응하는 과정으로, 10~14일이 지나면 혈장량 증가·발한량 증가로 자연스럽게 적응됩니다.',
@@ -914,6 +955,7 @@ Zone 2 훈련은 처음에 답답할 정도로 느립니다. 하지만 4~6주 �
   {
     id: 'track-workout',
     category: '페이스',
+    publishedAt: '2026-04-14',
     emoji: '🏟️',
     title: '트랙 달리기를 활용한 속도 훈련법',
     summary: '400m 트랙은 정확한 거리와 속도 측정이 가능해 효율적인 인터벌 훈련에 최적입니다. 주 1회 트랙 훈련을 추가하면 5km 기록이 빠르게 향상됩니다.',
@@ -943,6 +985,7 @@ Zone 2 훈련은 처음에 답답할 정도로 느립니다. 하지만 4~6주 �
   {
     id: 'running-watch-heart-rate',
     category: '장비',
+    publishedAt: '2026-04-14',
     emoji: '💓',
     title: '손목 심박수 vs 가슴 심박수: 어느 쪽이 더 정확할까?',
     summary: '손목형 광학 심박수는 편리하지만 움직임이 많은 달리기에서 오차가 큽니다. 정확한 심박수 구간 훈련이 필요하다면 가슴 스트랩(HRM)을 사용하는 것이 훨씬 신뢰도가 높습니다.',
@@ -970,6 +1013,7 @@ Zone 2 훈련은 처음에 답답할 정도로 느립니다. 하지만 4~6주 �
   {
     id: 'post-race-recovery',
     category: '회복',
+    publishedAt: '2026-04-14',
     emoji: '🏅',
     title: '레이스 후 올바른 회복 기간: 마라톤은 6주가 필요하다',
     summary: '레이스가 끝난 직후 몸 상태가 좋아도 달리지 마세요. 풀 마라톤 후 6주, 하프 마라톤 후 2~3주, 10km 후 1주의 회복 기간 동안 가벼운 활동만 해야 반복 부상을 막을 수 있습니다.',
@@ -1000,6 +1044,7 @@ Zone 2 훈련은 처음에 답답할 정도로 느립니다. 하지만 4~6주 �
   {
     id: 'anti-chafing',
     category: '장비',
+    publishedAt: '2026-04-14',
     emoji: '🧴',
     title: '쓸림 방지: 장거리 달리기의 숨겨진 적',
     summary: '허벅지 안쪽, 겨드랑이, 젖꼭지 쓸림은 장거리 달리기에서 예상치 못한 고통의 원인입니다. 바셀린이나 Body Glide를 취약 부위에 미리 바르면 10km 이상부터 생기는 쓸림을 완전히 예방할 수 있습니다.',
@@ -1025,6 +1070,7 @@ Zone 2 훈련은 처음에 답답할 정도로 느립니다. 하지만 4~6주 �
   {
     id: 'running-in-altitude',
     category: '기상',
+    publishedAt: '2026-04-14',
     emoji: '🏔️',
     title: '고도가 높은 곳에서 달리기가 어려운 이유',
     summary: '해발 1500m 이상에서는 산소 밀도가 낮아 같은 페이스가 훨씬 힘들게 느껴집니다. 고지 훈련 효과를 얻으려면 최소 2~3주가 필요하며, 첫 며칠은 반드시 강도를 50% 낮춰야 합니다.',
@@ -1052,6 +1098,7 @@ Zone 2 훈련은 처음에 답답할 정도로 느립니다. 하지만 4~6주 �
   {
     id: 'running-log',
     category: '페이스',
+    publishedAt: '2026-04-14',
     emoji: '📓',
     title: '달리기 일지를 써야 하는 진짜 이유',
     summary: '훈련 일지는 단순 기록이 아닌 부상 원인 분석 도구입니다. 어떤 훈련 패턴이 부상으로 이어졌는지, 어떤 조건에서 좋은 기록이 나왔는지를 알 수 있어야 다음 훈련을 더 잘 설계할 수 있습니다.',
@@ -1077,6 +1124,7 @@ Garmin Connect, Strava, Nike Run Club 모두 자동 기록 기능을 제공합�
   {
     id: 'cross-training',
     category: '회복',
+    publishedAt: '2026-04-14',
     emoji: '🚴',
     title: '크로스 트레이닝: 달리기 실력을 달리기 없이 올리는 법',
     summary: '부상 중이거나 과훈련을 피하고 싶을 때, 수영·자전거·로잉머신은 달리기 근육을 쉬게 하면서 심폐 능력을 유지합니다. 주 1~2회 크로스 트레이닝으로 총 훈련 볼륨을 늘릴 수 있습니다.',

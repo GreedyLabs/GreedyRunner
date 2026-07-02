@@ -1,6 +1,8 @@
-import { useParams, Link, Navigate, useLocation } from 'react-router-dom'
+import type { ReactNode } from 'react'
+import { useParams, Link, useLocation } from 'react-router-dom'
 import { RUNNING_TIPS } from '../../lib/runningTips'
 import { Card } from '../components/ui/Card'
+import { NotFoundPage } from './NotFoundPage'
 
 const CATEGORY_COLOR: Record<string, string> = {
   '페이스': 'bg-blue-100 text-blue-600',
@@ -17,9 +19,10 @@ export function RunningTipPage() {
   const backUrl: string = (location.state as { backUrl?: string } | null)?.backUrl ?? '/tips'
   const tip = RUNNING_TIPS.find(t => t.id === id)
 
-  if (!tip) return <Navigate to="/" replace />
+  if (!tip) return <NotFoundPage />
 
   const categoryColor = CATEGORY_COLOR[tip.category] ?? 'bg-gray-100 text-gray-600'
+  const relatedTips = RUNNING_TIPS.filter(t => t.category === tip.category && t.id !== tip.id).slice(0, 3)
 
   // 단락 구분(\n\n), 굵게(**text**), 표(| 로 시작) 처리
   const paragraphs = tip.detail.split('\n\n').map((block, i) => {
@@ -62,32 +65,48 @@ export function RunningTipPage() {
       )
     }
 
-    // 줄 단위 처리
+    // 줄 단위 처리 — 목록은 <ul>로 묶고, **단독 굵은 줄**은 섹션 제목이므로 <h2>로 렌더
     const lines = block.split('\n')
+    const rendered: ReactNode[] = []
+    let bullets: string[] = []
+    const flushBullets = (key: string) => {
+      if (bullets.length === 0) return
+      rendered.push(
+        <ul key={key} className="space-y-1 list-none">
+          {bullets.map((item, bi) => (
+            <li key={bi} className="flex gap-2 text-xs sm:text-sm text-gray-600 leading-relaxed">
+              <span className="text-gray-400 shrink-0 mt-0.5" aria-hidden="true">•</span>
+              <span>{renderInline(item)}</span>
+            </li>
+          ))}
+        </ul>
+      )
+      bullets = []
+    }
+    lines.forEach((line, li) => {
+      if (line.startsWith('- ')) {
+        bullets.push(line.slice(2))
+        return
+      }
+      flushBullets(`ul-${li}`)
+      if (line.startsWith('**') && line.endsWith('**')) {
+        rendered.push(
+          <h2 key={li} className="font-semibold text-gray-800 text-sm sm:text-base mt-3">
+            {line.slice(2, -2)}
+          </h2>
+        )
+        return
+      }
+      rendered.push(
+        <p key={li} className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+          {renderInline(line)}
+        </p>
+      )
+    })
+    flushBullets('ul-end')
     return (
       <div key={i} className="space-y-1">
-        {lines.map((line, li) => {
-          if (line.startsWith('- ')) {
-            return (
-              <div key={li} className="flex gap-2 text-xs sm:text-sm text-gray-600 leading-relaxed">
-                <span className="text-gray-400 shrink-0 mt-0.5">•</span>
-                <span>{renderInline(line.slice(2))}</span>
-              </div>
-            )
-          }
-          if (line.startsWith('**') && line.endsWith('**')) {
-            return (
-              <p key={li} className="font-semibold text-gray-800 text-sm sm:text-base mt-3">
-                {line.slice(2, -2)}
-              </p>
-            )
-          }
-          return (
-            <p key={li} className="text-xs sm:text-sm text-gray-600 leading-relaxed">
-              {renderInline(line)}
-            </p>
-          )
-        })}
+        {rendered}
       </div>
     )
   })
@@ -122,7 +141,37 @@ export function RunningTipPage() {
         <div className="space-y-4">
           {paragraphs}
         </div>
+        <p className="mt-6 pt-3 border-t border-gray-100 text-[10px] sm:text-xs text-gray-400">
+          <time dateTime={tip.updatedAt ?? tip.publishedAt}>
+            {(tip.updatedAt ?? tip.publishedAt).split('-').join('. ')}.
+          </time>{' '}
+          · GreedyLabs
+        </p>
       </Card>
+
+      {/* 같은 카테고리의 관련 팁 — 내부 링크 강화 */}
+      {relatedTips.length > 0 && (
+        <Card>
+          <h2 className="text-sm sm:text-base font-semibold text-gray-800 mb-3">
+            관련 {tip.category} 팁
+          </h2>
+          <ul className="space-y-2">
+            {relatedTips.map(related => (
+              <li key={related.id}>
+                <Link
+                  to={`/tips/${related.id}`}
+                  className="flex items-start gap-2 text-xs sm:text-sm text-gray-600 hover:text-blue-600 transition-colors"
+                >
+                  <span aria-hidden="true">{related.emoji}</span>
+                  <span className="underline underline-offset-2 decoration-gray-200">
+                    {related.title}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       <Link
         to="/tips"

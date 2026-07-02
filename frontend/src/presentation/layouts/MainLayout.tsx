@@ -19,7 +19,10 @@ export function MainLayout({ children }: MainLayoutProps) {
   const { showBanner, handleInstall, handleDismiss } = usePWAInstall();
 
   // 개발 중 배너 미리보기: URL에 ?pwa=1 추가하면 강제 표시
-  const searchParams = new URLSearchParams(window.location.search);
+  // (프리렌더 시에는 window가 없으므로 건너뜀)
+  const searchParams = new URLSearchParams(
+    typeof window === 'undefined' ? '' : window.location.search
+  );
   const forceShowBanner = searchParams.get('pwa') === '1';
   const isBannerVisible = showBanner || forceShowBanner;
 
