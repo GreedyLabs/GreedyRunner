@@ -23,16 +23,32 @@ const API_KEY = process.env.AIR_KOREA_API_KEY ?? '';
 const MSRS_BASE = 'https://apis.data.go.kr/B552584/MsrstnInfoInqireSvc';
 const ARPL_BASE = 'https://apis.data.go.kr/B552584/ArpltnInforInqireSvc';
 
-// 엔드포인트 전체 응답 시간을 5초 이내로 유지하기 위한 개별 API 타임아웃.
+// 엔드포인트 전체 응답 시간을 제한하기 위한 개별 API 타임아웃.
 // 캐시 미스 시 getNearbyStations → getStationMeasurements가 직렬로 실행되므로
-// 3500ms로 제한해 최악 7s까지 허용하되, 실 응답은 대부분 <1s.
-async function fetchWithTimeout(url: string, timeoutMs = 3500): Promise<Response> {
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), timeoutMs)
-  try {
-    return await fetch(url, { signal: controller.signal })
-  } finally {
-    clearTimeout(timer)
+// 기본 3500ms로 제한 (실 응답은 대부분 <1s).
+// 공공데이터포털이 일시적으로 느려지는 일이 잦아 타임아웃 시 1회 재시도한다
+// — 재시도 포함 최악 응답 시간은 timeoutMs × (retriesOnTimeout + 1).
+async function fetchWithTimeout(
+  url: string,
+  timeoutMs = 3500,
+  retriesOnTimeout = 1
+): Promise<Response> {
+  for (let attempt = 0; ; attempt++) {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), timeoutMs)
+    try {
+      return await fetch(url, { signal: controller.signal })
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError' && attempt < retriesOnTimeout) {
+        console.warn(
+          `[airkorea] 타임아웃(${timeoutMs}ms) — 재시도 ${attempt + 1}/${retriesOnTimeout}: ${url.split('?')[0]}`
+        )
+        continue
+      }
+      throw err
+    } finally {
+      clearTimeout(timer)
+    }
   }
 }
 
@@ -129,7 +145,25 @@ interface TmCoordResult {
   tmY: string | number;
 }
 
+/**
+ * TM 좌표(동 이름 → 측정소 기준 좌표) 응답 캐시.
+ * 측정소 TM 좌표는 사실상 정적 데이터라 길게(24h) 캐싱해도 안전하다.
+ * 빈 결과(오타 등)도 짧게 캐싱해 같은 검색어의 연속 실패가 upstream을 반복 타지 않게 한다.
+ * — 검색이 upstream 지연에 좌우돼 504가 나던 문제의 완충 장치.
+ */
+const TM_COORDS_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24시간
+const TM_COORDS_EMPTY_TTL_MS = 10 * 60 * 1000; // 10분
+const tmCoordsCache = new Map<string, { items: TmCoordResult[]; expiresAt: number }>();
+
+// 검색은 사용자가 스피너를 보며 기다리는 흐름이라, 짧은 타임아웃으로 실패하는 것보다
+// 조금 더 기다려서라도 결과를 주는 편이 낫다 (재시도 1회 포함 최악 12s).
+const TM_COORDS_TIMEOUT_MS = 6000;
+
 async function getTMCoords(query: string): Promise<TmCoordResult[]> {
+  const cacheKey = query.trim();
+  const cached = tmCoordsCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.items;
+
   const url = new URL(`${MSRS_BASE}/getTMStdrCrdnt`);
   url.searchParams.set('serviceKey', API_KEY);
   url.searchParams.set('returnType', 'json');
@@ -137,12 +171,17 @@ async function getTMCoords(query: string): Promise<TmCoordResult[]> {
   url.searchParams.set('pageNo', '1');
   url.searchParams.set('umdName', query);
 
-  const res = await fetchWithTimeout(url.toString());
+  const res = await fetchWithTimeout(url.toString(), TM_COORDS_TIMEOUT_MS);
   if (!res.ok) throw new Error(`getTMStdrCrdnt HTTP ${res.status}`);
   const json = (await res.json()) as AirKoreaResponse<TmCoordResult>;
   const { resultCode, resultMsg } = json.response.header;
   if (resultCode !== '00') throw new Error(`getTMStdrCrdnt API 오류: ${resultMsg}`);
-  return json.response.body.items ?? [];
+  const items = json.response.body.items ?? [];
+  tmCoordsCache.set(cacheKey, {
+    items,
+    expiresAt: Date.now() + (items.length > 0 ? TM_COORDS_CACHE_TTL_MS : TM_COORDS_EMPTY_TTL_MS),
+  });
+  return items;
 }
 
 // ── 대기오염 정보 API ─────────────────────────────────────────
