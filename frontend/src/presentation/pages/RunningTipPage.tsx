@@ -55,14 +55,31 @@ export function RunningTipPage() {
       )
     }
 
-    // 인라인 **굵게** 처리
+    // 인라인 **굵게** 및 [링크](url) 처리
     const renderInline = (text: string) => {
-      const parts = text.split(/(\*\*[^*]+\*\*)/)
-      return parts.map((part, pi) =>
-        part.startsWith('**') && part.endsWith('**')
-          ? <strong key={pi} className="font-semibold text-gray-800">{part.slice(2, -2)}</strong>
-          : part
-      )
+      const parts = text.split(/(\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\))/)
+      return parts.map((part, pi) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+          return <strong key={pi} className="font-semibold text-gray-800">{part.slice(2, -2)}</strong>
+        }
+
+        const linkMatch = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/)
+        if (linkMatch) {
+          return (
+            <a
+              key={pi}
+              href={linkMatch[2]}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-blue-600 underline underline-offset-2 decoration-blue-200 hover:text-blue-700"
+            >
+              {linkMatch[1]}
+            </a>
+          )
+        }
+
+        return part
+      })
     }
 
     // 줄 단위 처리 — 목록은 <ul>로 묶고, **단독 굵은 줄**은 섹션 제목이므로 <h2>로 렌더
