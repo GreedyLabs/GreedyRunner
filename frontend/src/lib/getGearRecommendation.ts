@@ -17,6 +17,8 @@ export interface GearItem {
   title: string
   note: string
   tone: 'good' | 'warn'
+  /** 홈 준비물 카드 우측에 표시할 짧은 컨텍스트 값 (예: '24°C', 'UV 보통', '습도 58%'). 없으면 표시 생략. */
+  meta?: string
 }
 
 export interface GearRecommendation {
@@ -93,6 +95,7 @@ function headwearItem(weather: WeatherInfo): GearItem | null {
       title: '캡 모자 · 선글라스',
       note: `자외선 지수 ${uvIndex}(높음 이상). 눈과 두피를 보호하고 눈부심을 줄여줘요.`,
       tone: 'warn',
+      meta: 'UV 높음',
     }
   }
   if (uvIndex >= 3) {
@@ -101,6 +104,7 @@ function headwearItem(weather: WeatherInfo): GearItem | null {
       title: '캡 모자',
       note: `자외선 지수 ${uvIndex}(보통). 장시간 노출 시 모자를 추천해요.`,
       tone: 'warn',
+      meta: 'UV 보통',
     }
   }
   return null
@@ -154,6 +158,7 @@ function maskItem(airQuality: AirQualityMetrics): GearItem | null {
       title: '보건용 마스크 (KF80 이상)',
       note: '미세먼지가 매우 나쁨 수준이에요. 장시간 야외 활동보다 마스크 착용 또는 실내 운동을 고려하세요.',
       tone: 'warn',
+      meta: '미세먼지 매우나쁨',
     }
   }
   if (bad) {
@@ -162,6 +167,7 @@ function maskItem(airQuality: AirQualityMetrics): GearItem | null {
       title: '보건용 마스크',
       note: '미세먼지가 나쁨 수준이에요. 호흡기 부담을 줄이려면 마스크 착용을 고려하세요.',
       tone: 'warn',
+      meta: '미세먼지 나쁨',
     }
   }
   return null
@@ -191,7 +197,9 @@ export function getGearRecommendation(
     return { items, extras: ['러닝 벨트'] }
   }
 
-  const items: GearItem[] = [clothingItem(weather)]
+  const clothing = clothingItem(weather)
+  clothing.meta = `${weather.temperature}°C`
+  const items: GearItem[] = [clothing]
 
   const headwear = headwearItem(weather)
   if (headwear) items.push(headwear)
@@ -199,7 +207,9 @@ export function getGearRecommendation(
   const mask = maskItem(airQuality)
   if (mask) items.push(mask)
 
-  items.push(shoesItem(weather), waterItem(weather))
+  const water = waterItem(weather)
+  water.meta = `습도 ${weather.humidity}%`
+  items.push(shoesItem(weather), water)
 
   const extras: string[] = ['러닝 벨트']
   if (weather.humidity >= 70) extras.unshift('얇은 손수건')

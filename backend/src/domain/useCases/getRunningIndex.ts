@@ -119,10 +119,10 @@ function calculateScore(m: AirQualityMetrics, w?: WeatherInfo, hour?: number): n
   // 강수 강제 감점 (가중치와 별개로 적용)
   const precipBonus = precipitationForcePenalty(w.precipitation)
 
-  // UV-열 복합 강제 감점 (가중치와 별개로 적용)
-  const uvHeatBonus = uvHeatForcePenalty(w.temperature, w.uvIndex, w.humidity, hour)
+  // 습열(체감 더위) 강제 감점 (가중치와 별개로 적용)
+  const heatBonus = heatHumidityForcePenalty(w.temperature, w.humidity, w.uvIndex, hour)
 
-  const rawScore = Math.max(0, Math.min(100, Math.round(100 - compoundPenalty - precipBonus - uvHeatBonus)))
+  const rawScore = Math.max(0, Math.min(100, Math.round(100 - compoundPenalty - precipBonus - heatBonus)))
   return applyExtremeCap(rawScore, m, w, hour)
 }
 
@@ -154,8 +154,15 @@ function applyExtremeCap(score: number, m: AirQualityMetrics, w?: WeatherInfo, h
   if (w.precipitation === 'snow' || w.precipitation === 'sleet') cap = Math.min(cap, 30)
   else if (w.precipitation === 'rain') cap = Math.min(cap, 45)
 
-  // 극한 기온 — 영하 또는 35°C 이상
-  if (w.temperature <= 0 || w.temperature >= 35) cap = Math.min(cap, 30)
+  // 무더위 상한 — 한여름 고온은 대기질이 완벽해도 '최적(great)'으로 뜨지 않도록
+  // 최종 점수 상한을 낮춘다. 25°C(90)에서 35°C(30)까지 °C당 6점씩 선형으로 낮추고,
+  // 35°C 이상은 30으로 고정한다.
+  // (기온은 가중치가 10%뿐이라 28°C의 페널티 30점도 최종 3점 감점에 그친다. 상한 없이는
+  //  무더위 + 청정 공기 조합이 90점대 '최적'으로 나와 실제 더위를 반영하지 못했다.)
+  if (w.temperature >= 25) cap = Math.min(cap, Math.max(30, 90 - (w.temperature - 25) * 6))
+
+  // 극한 저온 — 영하
+  if (w.temperature <= 0) cap = Math.min(cap, 30)
 
   return Math.round(Math.min(score, cap))
 }
@@ -286,30 +293,38 @@ function uvPenalty(uv: number, hour?: number): number {
 }
 
 /**
- * UV-열 복합 강제 감점.
- * UV가 높은(≥6) 날 기온이 20°C 이상이면 피부 온도 상승으로 체온 조절 부담이 커져
- * 체감 더위가 기온 수치 이상으로 올라간다.
- * 고습(>70%)이면 땀 증발이 억제돼 체온 조절이 더 어려워지므로 추가 증폭한다.
- * 가중치 시스템과 별개로 직접 차감해 체감을 반영한다.
+ * 습열(체감 더위) 강제 감점 — 가중치와 별개로 직접 차감해 체감을 반영한다.
  *
- * UV 등급(높음/매우높음/위험) × 20°C 초과분 선형 증가 × 습도 증폭(최대 1.5배).
+ * 기온이 높을수록, 습도가 높을수록 땀 증발이 억제돼 체온 조절 부담이 커진다(heat index).
+ * 습도(5~8%)·기온(10%)의 가중치가 낮아 가중 합산만으로는 "흐린 고온다습"이나
+ * "저녁 고온다습" 같은 조합이 거의 감점되지 않으므로, 기온·습도를 곱으로 결합해 직접 차감한다.
+ * 자외선이 강한 주간(UV≥6)에는 복사열이 더해져 체감이 한 단계 더 올라간다 — 단 UV는
+ * 게이트가 아니라 증폭 요소로만 쓴다(흐린 무더위·야간 고온다습도 습열 부담은 그대로이므로).
+ *
+ * 시원하면(20°C 미만) 습해도 열스트레스가 미미하므로 발동하지 않는다.
+ *   기본 = (기온 - 20, 최대 15) × 습도 증폭(60→1.0 … 100%→2.5) × 1.8
+ *   UV 추가(주간 UV≥6) = UV 등급(1~3) × 기온 초과분 × 1.2
  */
-function uvHeatForcePenalty(temp: number, uvIndex?: number, humidity?: number, hour?: number): number {
-  if (uvIndex == null || uvIndex < 6) return 0
-  if (temp < 17) return 0
-  // 야간에는 UV 없음
-  if (hour !== undefined && (hour >= 20 || hour < 6)) return 0
+function heatHumidityForcePenalty(temp: number, humidity?: number, uvIndex?: number, hour?: number): number {
+  if (temp < 20) return 0
+  // 20°C 초과분 (35°C 기준 최대 15°C 캡)
+  const tempExcess = Math.min(temp - 20, 15)
 
-  // UV 심각도 단계: 높음(6~7)=1, 매우높음(8~10)=2, 위험(11+)=3
-  const uvTier = uvIndex <= 7 ? 1 : uvIndex <= 10 ? 2 : 3
-  // 17°C 초과분 (32°C 기준 최대 15°C 캡)
-  const tempExcess = Math.min(temp - 17, 15)
-  // 습도 증폭: 70% 초과 시 최대 1.5배 (70~100% → 1.0~1.5배)
-  const humFactor = humidity != null && humidity > 70
-    ? 1 + Math.min((humidity - 70) / 60, 0.5)
-    : 1.0
+  // 습열: 습도 60% 초과분에 비례한다(60%→0 … 100%→1). 건조하면 0이므로 쾌적한
+  // 건조·온난한 날은 감점하지 않고(기온 자체는 가중 페널티·무더위 상한이 담당),
+  // 고온다습일 때만 땀 증발 억제에 따른 체감 상승을 반영한다.
+  const humExcess = humidity != null && humidity > 60 ? Math.min((humidity - 60) / 40, 1) : 0
+  let penalty = tempExcess * humExcess * 5.5
 
-  return Math.round(uvTier * tempExcess * 2.5 * humFactor)
+  // 자외선 복사열 추가 — 주간(06~20시)에 UV가 강할 때만. 건조해도 강한 햇볕은 체감을 올린다.
+  const isDaytime = hour === undefined || (hour >= 6 && hour < 20)
+  if (isDaytime && uvIndex != null && uvIndex >= 6) {
+    // UV 심각도 단계: 높음(6~7)=1, 매우높음(8~10)=2, 위험(11+)=3
+    const uvTier = uvIndex <= 7 ? 1 : uvIndex <= 10 ? 2 : 3
+    penalty += uvTier * tempExcess * 3.0
+  }
+
+  return Math.round(penalty)
 }
 
 /** 비/눈이면 큰 감점 */

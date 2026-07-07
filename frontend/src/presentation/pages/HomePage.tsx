@@ -6,6 +6,7 @@ import { ConditionGrid } from '../components/shared/ConditionGrid'
 import { AirQualityDetails } from '../components/shared/AirQualityDetails'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { getGearRecommendation } from '../../lib/getGearRecommendation'
+import { gearIconFor } from '../../lib/gearIcons'
 import { getConditionTip } from '../../lib/getConditionTip'
 import { bestHourRangeLabel, ampmHour } from '../../lib/hourFormat'
 import { TONE_CLASSES } from '../../lib/runningStatusColors'
@@ -110,7 +111,7 @@ function TimelinePreview({ data }: { data: AirQualityData }) {
       to="/hours"
       className="block w-full text-left bg-panel border border-line rounded-3xl p-[18px] hover:opacity-90 transition"
     >
-      <div className="flex items-center justify-between mb-3.5">
+      <div className="flex items-center justify-between mb-5">
         <h3 className="font-bold text-[15px]">언제 달릴까요</h3>
         <span className="flex items-center gap-0.5 text-xs text-accent font-bold whitespace-nowrap">
           {bestHourRangeLabel(data.bestRunningHours)} <ChevronRight className="w-3.5 h-3.5" />
@@ -147,15 +148,25 @@ function GearPreview({ data }: { data: AirQualityData }) {
           전체 보기 <ChevronRight className="w-3.5 h-3.5" />
         </span>
       </div>
-      <div className="flex flex-wrap gap-1.5">
-        {gear.items.slice(0, 3).map((item) => (
-          <span
-            key={item.title}
-            className="flex items-center gap-1.5 border border-line rounded-full px-3 py-1.5 text-[12.5px] font-semibold"
-          >
-            {item.title}
-          </span>
-        ))}
+      <div className="flex flex-col">
+        {gear.items.slice(0, 4).map((item) => {
+          const Icon = gearIconFor(item.icon)
+          const warn = item.tone === 'warn'
+          return (
+            <div
+              key={item.title}
+              className="flex items-center gap-3 py-2.5 border-b border-line last:border-b-0"
+            >
+              <Icon className={`flex-none w-[18px] h-[18px] ${warn ? 'text-warn' : 'text-accent'}`} />
+              <span className="flex-1 text-sm font-semibold truncate">{item.title}</span>
+              {item.meta && (
+                <span className={`text-xs font-semibold whitespace-nowrap ${warn ? 'text-warn' : 'text-faint'}`}>
+                  {item.meta}
+                </span>
+              )}
+            </div>
+          )
+        })}
       </div>
     </Link>
   )

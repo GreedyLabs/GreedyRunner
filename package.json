@@ -8,6 +8,7 @@
     "frontend:build": "pnpm --filter @greedy-runner/frontend run build",
     "backend:dev": "pnpm --filter @greedy-runner/backend run dev",
     "backend:build": "pnpm --filter @greedy-runner/backend run build",
-    "backend:start": "pnpm --filter @greedy-runner/backend run start"
+    "backend:start": "pnpm --filter @greedy-runner/backend run start",
+    "backend:test": "pnpm --filter @greedy-runner/backend run test"
   }
 }
