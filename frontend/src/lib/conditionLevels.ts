@@ -1,4 +1,5 @@
 import type { StatusTone } from './runningStatusColors'
+import type { PrecipitationType } from '../domain/entities/airQuality.types'
 
 export interface ConditionLevel {
   label: string
@@ -48,4 +49,29 @@ export function uvLevel(uvIndex: number | undefined): ConditionLevel {
   if (uvIndex <= 2) return { label: '낮음', tone: 'accent' }
   if (uvIndex <= 5) return { label: '보통', tone: 'warn' }
   return { label: '높음', tone: 'critical' }
+}
+
+// getRunningIndex의 windSpeedPenalty와 동일 경계: 3m/s 이하 쾌적, 7m/s 이상 불편.
+export function windLevel(windSpeed: number): ConditionLevel {
+  if (windSpeed <= 3) return { label: '약함', tone: 'accent' }
+  if (windSpeed <= 7) return { label: '보통', tone: 'warn' }
+  return { label: '강함', tone: 'critical' }
+}
+
+const PRECIP_LABELS: Record<PrecipitationType, string> = {
+  none: '없음',
+  rain: '비',
+  snow: '눈',
+  sleet: '진눈깨비',
+}
+
+// 강수는 알고리즘에서 점수 상한을 가장 세게 거는 요인이라, 있으면 항상 '주의'로 표시한다.
+export function precipitationLevel(precip: PrecipitationType): {
+  value: string
+  level: ConditionLevel
+} {
+  return {
+    value: PRECIP_LABELS[precip],
+    level: precip === 'none' ? { label: '쾌적', tone: 'accent' } : { label: '주의', tone: 'critical' },
+  }
 }

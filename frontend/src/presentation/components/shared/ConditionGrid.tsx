@@ -1,4 +1,4 @@
-import { pm25Level, pm10Level, o3Level, tempLevel, humidityLevel, uvLevel } from '../../../lib/conditionLevels';
+import { pm25Level, pm10Level, o3Level, tempLevel, humidityLevel, uvLevel, windLevel, precipitationLevel } from '../../../lib/conditionLevels';
 import { TONE_CLASSES } from '../../../lib/runningStatusColors';
 import type { AirQualityMetrics, WeatherInfo } from '../../../domain/entities/airQuality.types';
 import { cn } from '../../../lib/cn';
@@ -21,11 +21,14 @@ export function ConditionGrid({ airQuality, weather }: ConditionGridProps) {
     { label: '오존', value: airQuality.o3 == null ? '—' : String(Math.round(airQuality.o3 * 1000)), level: o3Level(airQuality.o3) },
   ];
 
+  const precip = weather ? precipitationLevel(weather.precipitation) : null;
   const weatherTiles: Tile[] = weather
     ? [
         { label: '기온', value: `${weather.temperature}°`, level: tempLevel(weather.temperature) },
         { label: '습도', value: `${weather.humidity}%`, level: humidityLevel(weather.humidity) },
         { label: '자외선', value: weather.uvIndex == null ? '—' : String(weather.uvIndex), level: uvLevel(weather.uvIndex) },
+        { label: '풍속', value: `${weather.windSpeed}㎧`, level: windLevel(weather.windSpeed) },
+        { label: '강수', value: precip!.value, level: precip!.level },
       ]
     : [];
 
@@ -35,8 +38,12 @@ export function ConditionGrid({ airQuality, weather }: ConditionGridProps) {
     <div className="bg-panel border border-line rounded-3xl py-1">
       <div className="grid grid-cols-3">
         {tiles.map((tile, i) => {
-          const isRow1 = i < 3;
-          const isLeftCols = i % 3 !== 2;
+          // 3열 그리드에서 칸 수가 3의 배수가 아니어도(예: 8칸) 구분선이 어긋나지 않도록
+          // 마지막 행/열을 동적으로 계산한다.
+          const lastRowStart = tiles.length - (tiles.length % 3 || 3);
+          const isLastRow = i >= lastRowStart;
+          const isRightCol = i % 3 === 2;
+          const isLastTile = i === tiles.length - 1;
           return (
             <div
               key={tile.label}
@@ -44,8 +51,8 @@ export function ConditionGrid({ airQuality, weather }: ConditionGridProps) {
               // (컨테이너 가로 패딩을 두면 1열만 더 들여써져 칸마다 여백이 달라 보였음)
               className={cn(
                 'px-4 py-3.5',
-                isRow1 && tiles.length > 3 && 'border-b border-line',
-                isLeftCols && 'border-r border-line'
+                !isLastRow && 'border-b border-line',
+                !isRightCol && !isLastTile && 'border-r border-line'
               )}
             >
               <p className="text-[11px] text-muted mb-0.5">{tile.label}</p>
