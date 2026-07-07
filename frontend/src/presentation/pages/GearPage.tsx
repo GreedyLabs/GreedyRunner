@@ -12,23 +12,53 @@ interface GearPageProps {
 }
 
 export function GearPage({ data, displayHour }: GearPageProps) {
-  if (!data || !displayHour) {
-    return (
-      <div className="flex justify-center py-16">
-        <LoadingSpinner size="lg" label="준비물 정보를 불러오는 중..." />
-      </div>
-    )
-  }
-
-  const { weather, airQuality } = displayHour
-  const gear = getGearRecommendation(weather, airQuality)
+  const gear = data && displayHour ? getGearRecommendation(displayHour.weather, displayHour.airQuality) : null
 
   return (
     <>
-      <h2 className="text-[22px] font-extrabold tracking-tight">
-        {hourLabel(displayHour.hour, displayHour.isNextDay)}의 준비물
-      </h2>
+      <h1 className="text-[22px] font-extrabold tracking-tight">
+        {displayHour ? `${hourLabel(displayHour.hour, displayHour.isNextDay)}의 준비물` : '오늘의 러닝 준비물'}
+      </h1>
 
+      {displayHour && gear ? (
+        <GearDetail weather={displayHour.weather} gear={gear} />
+      ) : (
+        <div className="flex justify-center py-16">
+          <LoadingSpinner size="lg" label="준비물 정보를 불러오는 중..." />
+        </div>
+      )}
+
+      <section className="mt-8 pt-6 border-t border-line">
+        <h2 className="text-base font-bold mb-3">러닝 준비물, 이렇게 고르세요</h2>
+        <div className="space-y-2.5 text-sm text-muted leading-relaxed">
+          <p>
+            <strong className="text-ink font-semibold">옷차림</strong>은 기온이 기준이에요. 20°C
+            안팎이면 반팔·반바지, 10°C 이하로 내려가면 긴팔에 얇은 바람막이를 더하는 레이어링이 좋습니다.
+          </p>
+          <p>
+            <strong className="text-ink font-semibold">자외선</strong>이 높은 날은 캡 모자와 선글라스,
+            자외선 차단제로 눈과 두피·피부를 보호하세요. <strong className="text-ink font-semibold">수분</strong>은
+            습도가 높거나 30분 이상 달릴 계획이라면 물 500㎖ 이상 챙기는 걸 권합니다.
+          </p>
+          <p>
+            비 소식이 있으면 접지력 좋은 러닝화와 여벌 옷을, 미세먼지가 나쁜 날은 무리한 강도를 피하는
+            것도 훌륭한 준비물입니다. 위 추천은 오늘의 실시간 날씨·대기질에 맞춰 자동으로 바뀝니다.
+          </p>
+        </div>
+      </section>
+    </>
+  )
+}
+
+function GearDetail({
+  weather,
+  gear,
+}: {
+  weather: HourlyForecastType['weather']
+  gear: ReturnType<typeof getGearRecommendation>
+}) {
+  return (
+    <>
       <div className="flex flex-wrap gap-1.5 mt-3">
         {weather ? (
           <>
@@ -45,7 +75,7 @@ export function GearPage({ data, displayHour }: GearPageProps) {
         )}
       </div>
 
-      <div className="mt-4.5 bg-panel border border-line rounded-3xl overflow-hidden">
+      <div className="mt-[18px] bg-panel border border-line rounded-3xl overflow-hidden">
         {gear.items.map((item) => {
           const Icon = gearIconFor(item.icon)
           const warn = item.tone === 'warn'

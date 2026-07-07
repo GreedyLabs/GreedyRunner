@@ -46,7 +46,7 @@ export function MainLayout({ children, regionName }: MainLayoutProps) {
   return (
     <div className="min-h-screen bg-paper text-ink flex flex-col">
       {/* 상단 바 */}
-      <header className="bg-panel border-b border-line sticky top-0 z-50">
+      <header className="bg-paper border-b border-line sticky top-0 z-50">
         <div className="max-w-2xl mx-auto px-3 sm:px-4 h-12 sm:h-14 flex items-center justify-between">
           <div className="flex items-center gap-1.5 text-sm sm:text-base font-bold">
             <MapPin className="w-4 h-4 text-accent" />
@@ -56,7 +56,7 @@ export function MainLayout({ children, regionName }: MainLayoutProps) {
             type="button"
             onClick={toggle}
             aria-label="테마 전환"
-            className="flex items-center justify-center w-9 h-9 rounded-xl bg-paper border border-line text-ink hover:opacity-80 active:scale-95 transition"
+            className="flex items-center justify-center w-9 h-9 rounded-xl bg-panel border border-line text-ink hover:opacity-80 active:scale-95 transition"
           >
             {mode === 'dark' ? <Sun className="w-[18px] h-[18px]" /> : <Moon className="w-[18px] h-[18px]" />}
           </button>
@@ -73,7 +73,7 @@ export function MainLayout({ children, regionName }: MainLayoutProps) {
       )}
 
       {/* 하단 탭 내비게이션 */}
-      <nav className="sticky bottom-0 z-50 bg-panel border-t border-line">
+      <nav className="sticky bottom-0 z-50 bg-paper border-t border-line">
         <div className="max-w-2xl mx-auto px-2 flex justify-around">
           {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
             <NavLink

@@ -2,7 +2,6 @@ import { useEffect, useRef } from 'react';
 import { Card } from '../ui/Card';
 import type { HourlyForecast as HourlyForecastType } from '../../../domain/entities/airQuality.types';
 import { cn } from '../../../lib/cn';
-import { STATUS_COLORS, BEST_HOUR_COLORS } from '../../../lib/runningStatusColors';
 
 interface BestHour {
   hour: number;
@@ -16,15 +15,7 @@ interface HourlyForecastProps {
   onHourSelect: (hourData: HourlyForecastType) => void;
 }
 
-const STATUS_LEGEND: Record<string, string> = {
-  great: '최적',
-  good: '좋음',
-  caution: '주의',
-  bad: '자제',
-  worst: '금지',
-};
-
-const BAR_MAX = 56;
+const BAR_MAX = 92;
 
 export function HourlyForecast({
   forecast,
@@ -47,48 +38,23 @@ export function HourlyForecast({
     return bestHours.some((b) => b.hour === hour && b.isNextDay === !!isNextDay);
   }
 
-  const bestHourLabel = bestHours.length > 0
-    ? bestHours.map((b) => `${b.isNextDay ? '내일 ' : ''}${b.hour}시`).join(', ')
-    : null;
-
   return (
     <Card className="animate-slide-up">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-bold text-ink text-base">러닝 타임라인</h3>
-        <span className="text-xs text-faint">24시간 예보</span>
-      </div>
-
-      {bestHourLabel ? (
-        <div className={cn('rounded-xl p-3 mb-4 flex items-center gap-2', BEST_HOUR_COLORS.bannerBg)}>
-          <div>
-            <p className={cn('text-xs font-medium', BEST_HOUR_COLORS.bannerTextMuted)}>언제 달리는 게 더 좋을까요?</p>
-            <p className={cn('text-sm font-bold', BEST_HOUR_COLORS.bannerText)}>{bestHourLabel}가 최적입니다</p>
-          </div>
-        </div>
-      ) : (
-        <div className="bg-warn-soft rounded-xl p-3 mb-4 flex items-center gap-2">
-          <div>
-            <p className="text-xs text-warn font-medium">오늘은 야외 러닝이 어려운 날이에요</p>
-            <p className="text-sm font-bold text-warn">실내 운동이나 휴식을 추천합니다</p>
-          </div>
-        </div>
-      )}
-
       {/* 바 차트 */}
-      <div ref={scrollRef} className="overflow-x-auto -mx-1 px-1 pb-1">
+      <div ref={scrollRef} className="no-scrollbar overflow-x-auto -mx-1 px-1">
         <div style={{ minWidth: '540px' }} className="pt-7">
           {/* 바 영역 */}
-          <div
-            className="flex items-end gap-[3px] sm:gap-1"
-            style={{ height: BAR_MAX + 20 }}
-          >
+          <div className="flex items-end gap-[3px] sm:gap-1.5" style={{ height: BAR_MAX }}>
             {forecast.map((hourData, index) => {
               const { hour, runningIndex, isNextDay } = hourData;
               const isNow = index === 0;
               const isBest = isBestHour(hour, isNextDay);
               const isSelected = selectedHour === hour;
-              const color = STATUS_COLORS[runningIndex.status];
-              const barH = Math.max(4, (runningIndex.score / 100) * BAR_MAX);
+              const barH = Math.max(6, (runningIndex.score / 100) * BAR_MAX);
+
+              // 색은 프로토타입과 동일한 3단계: 추천→accent, 현재→ink, 그 외→bar(중립 회색)
+              const barColor = isBest ? 'bg-accent' : isNow ? 'bg-ink' : 'bg-bar';
+              const showScore = isNow || isBest || isSelected;
 
               const prevItem = index > 0 ? forecast[index - 1] : null;
               const showDayDivider = isNextDay && prevItem && !prevItem.isNextDay;
@@ -101,27 +67,17 @@ export function HourlyForecast({
                   type="button"
                   aria-label={`${dayPrefix}${hour}시 러닝지수 ${runningIndex.score}점`}
                   className={cn(
-                    'relative flex-1 flex flex-col items-center justify-end gap-0.5 cursor-pointer group',
+                    'group relative flex-1 flex flex-col items-center gap-1.5 cursor-pointer',
                     showDayDivider && 'border-l border-dashed border-line pl-[2px]',
                   )}
                   onClick={() => onHourSelect(hourData)}
                 >
-                  {/* 호버 툴팁 */}
-                  <div
-                    role="tooltip"
-                    className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 rounded-md bg-ink text-paper text-[10px] font-semibold whitespace-nowrap shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20"
-                  >
-                    {dayPrefix}{hour}시 · {runningIndex.score}점
-                  </div>
-
-                  {/* 점수 (현재/선택/추천 시간) */}
-                  {(isNow || isSelected || isBest) && (
+                  {/* 점수 (현재/추천/선택 시간) */}
+                  {showScore && (
                     <span
                       className={cn(
-                        'text-[9px] sm:text-[10px] font-bold leading-none',
-                        isSelected ? 'text-violet-600'
-                          : isNow ? 'text-blue-600'
-                          : BEST_HOUR_COLORS.text,
+                        'absolute -top-5 text-[10px] font-bold leading-none',
+                        isBest ? 'text-accent' : 'text-ink',
                       )}
                     >
                       {runningIndex.score}
@@ -131,29 +87,20 @@ export function HourlyForecast({
                   {/* 바 */}
                   <div
                     className={cn(
-                      'w-full rounded-md transition-all duration-300 relative overflow-hidden',
-                      color.bar,
-                      isSelected && 'ring-1.5 ring-violet-500 ring-offset-1 brightness-110',
-                      isNow && !isSelected && 'ring-1.5 ring-blue-500 ring-offset-1',
-                      isBest && !isSelected && !isNow && BEST_HOUR_COLORS.glow,
-                      !isNow && !isSelected && 'group-hover:opacity-80 group-hover:brightness-110',
+                      'w-full rounded-[5px] transition-all duration-300',
+                      barColor,
+                      isSelected && 'ring-2 ring-ink ring-offset-2 ring-offset-panel',
+                      !isSelected && 'group-hover:opacity-80',
                     )}
                     style={{ height: `${barH}px` }}
-                  >
-                    {isBest && (
-                      <div
-                        className="absolute inset-0 bg-white rounded-md"
-                        style={{ animation: 'shimmer 1.5s ease-in-out infinite' }}
-                      />
-                    )}
-                  </div>
+                  />
                 </button>
               );
             })}
           </div>
 
           {/* 시간 라벨 */}
-          <div className="flex gap-[3px] sm:gap-1 mt-1.5">
+          <div className="flex gap-[3px] sm:gap-1.5 mt-1.5">
             {forecast.map(({ hour, isNextDay }, index) => {
               const isNow = index === 0;
               const isSelected = selectedHour === hour;
@@ -163,13 +110,13 @@ export function HourlyForecast({
               const showNextDayLabel = isNextDay && prevItem && !prevItem.isNextDay;
 
               return (
-                <div key={`label-${isNextDay ? 'next' : 'today'}-${hour}`} className="flex-1 flex flex-col items-center gap-0.5">
+                <div key={`label-${isNextDay ? 'next' : 'today'}-${hour}`} className="flex-1 flex justify-center">
                   <span
                     className={cn(
-                      'text-center text-[9px] sm:text-[10px] leading-none h-3',
-                      isSelected ? 'text-violet-600 font-semibold'
-                        : isNow ? 'text-blue-600 font-semibold'
-                        : isBest ? cn(BEST_HOUR_COLORS.textMuted, 'font-semibold')
+                      'text-center text-[9px] leading-none h-3',
+                      isNow ? 'text-ink font-bold'
+                        : isBest ? 'text-accent font-bold'
+                        : isSelected ? 'text-ink font-semibold'
                         : showNextDayLabel ? 'text-muted font-semibold'
                         : 'text-faint',
                     )}
@@ -179,9 +126,6 @@ export function HourlyForecast({
                       : hour % 3 === 0 ? hour
                       : ''}
                   </span>
-                  {isBest && (
-                    <div className={cn('w-1 h-1 rounded-full', BEST_HOUR_COLORS.dot)} />
-                  )}
                 </div>
               );
             })}
@@ -190,15 +134,17 @@ export function HourlyForecast({
       </div>
 
       {/* 범례 */}
-      <div className="flex justify-between sm:justify-start sm:gap-3 mt-3 pt-3 border-t border-line">
-        {Object.entries(STATUS_COLORS)
-          .filter(([status]) => status in STATUS_LEGEND)
-          .map(([status, colors]) => (
-            <div key={status} className="flex items-center gap-1">
-              <div className={cn('w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-[3px]', colors.bar)} />
-              <span className={cn('text-[10px] sm:text-xs', colors.text)}>{STATUS_LEGEND[status]}</span>
-            </div>
-          ))}
+      <div className="flex gap-3.5 mt-4 pt-3.5 border-t border-line">
+        {([
+          { c: 'bg-accent', label: '추천' },
+          { c: 'bg-ink', label: '현재' },
+          { c: 'bg-bar', label: '그 외' },
+        ] as const).map(({ c, label }) => (
+          <span key={label} className="flex items-center gap-1.5 text-[11px] text-muted">
+            <span className={cn('w-2.5 h-2.5 rounded-[3px]', c)} />
+            {label}
+          </span>
+        ))}
       </div>
     </Card>
   );

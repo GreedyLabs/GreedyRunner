@@ -7,8 +7,21 @@
   50% { opacity: 0.8; }
 }
 
+/* 가로 스크롤 영역의 스크롤바 숨김 (시간대 차트 등) — 프로토타입과 동일하게
+   스크롤바가 시간 라벨을 가리지 않도록 한다. 스크롤 동작은 그대로 유지. */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 :root {
-  --paper: #e4e2dc;
+  /* --paper is the app *screen* surface (white in the prototype).
+     #E4E2DC in the handoff was only the design-tool desk behind the
+     phone mockup — not part of the app UI. */
+  --paper: #ffffff;
   --panel: #f5f5f2;
   --line: #eaeae4;
   --ink: #191917;
@@ -24,7 +37,7 @@
 }
 
 .dark {
-  --paper: #0c0d10;
+  --paper: #16171b;
   --panel: #1e2026;
   --line: #2a2c32;
   --ink: #f1f1ef;

@@ -32,7 +32,7 @@ export function ConditionGrid({ airQuality, weather }: ConditionGridProps) {
   const tiles = [...airTiles, ...weatherTiles];
 
   return (
-    <div className="bg-panel border border-line rounded-3xl px-4 py-1">
+    <div className="bg-panel border border-line rounded-3xl py-1">
       <div className="grid grid-cols-3">
         {tiles.map((tile, i) => {
           const isRow1 = i < 3;
@@ -40,8 +40,10 @@ export function ConditionGrid({ airQuality, weather }: ConditionGridProps) {
           return (
             <div
               key={tile.label}
+              // 좌우 여백을 셀에 균일하게(px-4) 두어 모든 칸의 콘텐츠 들여쓰기를 맞춘다.
+              // (컨테이너 가로 패딩을 두면 1열만 더 들여써져 칸마다 여백이 달라 보였음)
               className={cn(
-                'px-1.5 py-3.5',
+                'px-4 py-3.5',
                 isRow1 && tiles.length > 3 && 'border-b border-line',
                 isLeftCols && 'border-r border-line'
               )}

@@ -111,7 +111,15 @@ function getCachedNearbyStations(tmX: number, tmY: number): NearbyStation[] | nu
   return entry.stations;
 }
 
-async function getNearbyStations(tmX: number, tmY: number): Promise<NearbyStation[]> {
+// getAirQuality의 tm: 경로에서는 뒤에 getStationMeasurements가 직렬로 이어지므로
+// 총 예산을 지키기 위해 짧게(1.5s) 제한한다. 반면 /by-coords(getRegionByCoords)는
+// 뒤 호출이 없어 예산이 남으므로 호출부에서 더 관대한 값을 넘긴다 — 근접측정소 API가
+// 간헐적으로 느릴 때 1.5s에서 AbortError→504로 위치 조회가 통째로 실패하던 문제를 방지.
+async function getNearbyStations(
+  tmX: number,
+  tmY: number,
+  timeoutMs = 1500,
+): Promise<NearbyStation[]> {
   const cached = getCachedNearbyStations(tmX, tmY);
   if (cached) return cached;
 
@@ -122,9 +130,8 @@ async function getNearbyStations(tmX: number, tmY: number): Promise<NearbyStatio
   url.searchParams.set('tmY', tmY.toFixed(6));
   url.searchParams.set('ver', '1.1');
 
-  // 이 호출은 이어지는 getStationMeasurements와 직렬이므로 짧게 제한한다(총 5s 예산).
-  // 실 응답은 대부분 <1s. 장애 시 빠르게 실패하고 캐시 폴백을 기대한다.
-  const res = await fetchWithTimeout(url.toString(), 1500);
+  // 실 응답은 대부분 <1s. 장애 시 재시도 1회 후 실패하고 캐시 폴백을 기대한다.
+  const res = await fetchWithTimeout(url.toString(), timeoutMs);
   if (!res.ok) throw new Error(`getNearbyMsrstnList HTTP ${res.status}`);
   const json = (await res.json()) as AirKoreaResponse<NearbyStation>;
   const { resultCode, resultMsg } = json.response.header;
@@ -310,7 +317,9 @@ export async function searchRegions(query: string): Promise<Region[]> {
 
 export async function getRegionByCoords(lat: number, lng: number): Promise<Region> {
   const { tmX, tmY } = latLngToTM(lat, lng);
-  const stations = await getNearbyStations(tmX, tmY);
+  // 단독 호출이라 직렬 예산 제약이 없다 — 검색(getTMCoords, 6s)과 비슷하게 관대한
+  // 타임아웃을 주어 upstream 지연으로 인한 간헐적 위치 조회 실패를 줄인다.
+  const stations = await getNearbyStations(tmX, tmY, 5000);
   if (stations.length === 0) throw new Error('주변 측정소를 찾을 수 없습니다.');
 
   const nearest = stations[0];

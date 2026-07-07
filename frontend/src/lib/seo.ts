@@ -225,6 +225,65 @@ export function getSeoMeta(pathname: string): SeoMeta {
     }
   }
 
+  // 연결된 플로우의 앱 내부 탭 — 실시간 데이터에 더해 시간대/준비물/팁을 설명하는
+  // 상록(evergreen) 콘텐츠를 정적으로 렌더하므로 색인 대상에 포함한다.
+  if (path === '/hours') {
+    return {
+      title: '시간대별 러닝 지수 — 언제 달릴까 | GreedyRunner',
+      description:
+        '지금부터 24시간, 대기질과 기상을 반영한 시간대별 러닝 지수로 오늘 달리기 가장 좋은 시간을 확인하세요.',
+      keywords: '시간대별 러닝, 러닝 시간, 언제 달릴까, 러닝 타임라인, 달리기 좋은 시간, 러닝 지수',
+      canonicalPath: '/hours',
+      ogType: 'website',
+      jsonLd: [
+        breadcrumbJsonLd([
+          { name: '홈', path: '/' },
+          { name: '시간대별 러닝 지수', path: '/hours' },
+        ]),
+        organizationJsonLd(),
+        webSiteJsonLd(),
+      ],
+    }
+  }
+
+  if (path === '/gear') {
+    return {
+      title: '오늘의 러닝 준비물 — 날씨·대기질 맞춤 추천 | GreedyRunner',
+      description:
+        '오늘 날씨·대기질에 맞춘 러닝 준비물 추천 — 옷차림부터 모자·선글라스, 러닝화, 수분까지 챙길 것을 알려드립니다.',
+      keywords: '러닝 준비물, 러닝 옷차림, 달리기 준비물, 러닝화, 러닝 복장, 날씨별 러닝',
+      canonicalPath: '/gear',
+      ogType: 'website',
+      jsonLd: [
+        breadcrumbJsonLd([
+          { name: '홈', path: '/' },
+          { name: '오늘의 준비물', path: '/gear' },
+        ]),
+        organizationJsonLd(),
+        webSiteJsonLd(),
+      ],
+    }
+  }
+
+  if (path === '/tip') {
+    return {
+      title: '오늘 조건 러닝 팁 — 대기질·날씨 맞춤 | GreedyRunner',
+      description:
+        '오늘의 대기질·기상 조건에 맞는 러닝 팁 — 오존·미세먼지·기온에 따라 오늘 어떻게 달리면 좋을지 알려드립니다.',
+      keywords: '러닝 팁, 조건별 러닝, 미세먼지 달리기, 오존 러닝, 러닝 페이스, 달리기 요령',
+      canonicalPath: '/tip',
+      ogType: 'website',
+      jsonLd: [
+        breadcrumbJsonLd([
+          { name: '홈', path: '/' },
+          { name: '오늘 조건 팁', path: '/tip' },
+        ]),
+        organizationJsonLd(),
+        webSiteJsonLd(),
+      ],
+    }
+  }
+
   // 알 수 없는 경로 — 404
   return {
     title: '페이지를 찾을 수 없습니다 | GreedyRunner',
@@ -303,6 +362,9 @@ export function getIndexableRoutes(): { path: string; lastmod: string }[] {
   const latestTipDate = tipDates.reduce((a, b) => (a > b ? a : b))
   return [
     { path: '/', lastmod: latestTipDate },
+    { path: '/hours', lastmod: latestTipDate },
+    { path: '/gear', lastmod: latestTipDate },
+    { path: '/tip', lastmod: latestTipDate },
     { path: '/outfit', lastmod: latestTipDate },
     { path: '/tips', lastmod: latestTipDate },
     ...RUNNING_TIPS.map(tip => ({

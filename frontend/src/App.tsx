@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, useLocation as useRouterLocation } from 'react-router-dom'
 import { MainLayout } from './presentation/layouts/MainLayout'
 import { HomePage } from './presentation/pages/HomePage'
 import { HoursPage } from './presentation/pages/HoursPage'
@@ -15,6 +15,19 @@ import { useAirQuality } from './application/hooks/useAirQuality'
 import { useLocation } from './application/hooks/useLocation'
 import type { Region } from './domain/entities/region.types'
 import type { HourlyForecast as HourlyForecastType } from './domain/entities/airQuality.types'
+
+/**
+ * 라우트 이동 시 페이지 스크롤을 맨 위로 되돌린다.
+ * <Routes> 방식은 자동 스크롤 복원이 없어, 탭·팁·차트로 이동해도 이전 스크롤이 남는다.
+ * 페이지 전체가 window(body) 스크롤이므로 window.scrollTo로 초기화한다.
+ */
+function ScrollToTop() {
+  const { pathname } = useRouterLocation()
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [pathname])
+  return null
+}
 
 function App() {
   const airQuality = useAirQuality()
@@ -37,8 +50,10 @@ function App() {
     setSelectedHour(null)
   }, [airQuality.data])
 
+  // 검색으로 고른 지역을 활성 지역으로 반영 — 실제 조회는 위 useEffect([location.region])가
+  // 담당한다. (직접 fetch하면 폴백 위치 안내가 남고 표시 지역이 어긋나므로 경로를 일원화)
   function handleRegionSelect(region: Region) {
-    airQuality.fetchByRegion(region.id, region.lat, region.lng)
+    location.selectRegion(region)
   }
 
   const data = airQuality.data
@@ -52,6 +67,7 @@ function App() {
 
   return (
     <MainLayout regionName={data?.regionName ?? location.region?.shortName ?? null}>
+      <ScrollToTop />
       <Seo />
       <UmamiScript />
       <Routes>
