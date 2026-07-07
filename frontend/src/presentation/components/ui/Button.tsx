@@ -21,11 +21,11 @@ export function Button({
 
   const variants = {
     primary:
-      'bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98] focus:ring-blue-500',
+      'bg-accent text-white hover:opacity-90 active:scale-[0.98] focus:ring-accent',
     secondary:
-      'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 active:scale-[0.98] focus:ring-gray-300',
+      'bg-paper text-ink border border-line hover:opacity-80 active:scale-[0.98] focus:ring-line',
     ghost:
-      'text-gray-600 hover:bg-gray-100 active:scale-[0.98] focus:ring-gray-300',
+      'text-muted hover:bg-panel active:scale-[0.98] focus:ring-line',
   }
 
   const sizes = {

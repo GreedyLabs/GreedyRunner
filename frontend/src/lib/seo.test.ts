@@ -93,12 +93,12 @@ describe('renderHeadTags', () => {
 })
 
 describe('getIndexableRoutes', () => {
-  it('정적 3개 + 팁 전체를 포함하고 lastmod는 ISO 날짜다', () => {
+  it('정적 6개 + 팁 전체를 포함하고 lastmod는 ISO 날짜다', () => {
     const routes = getIndexableRoutes()
-    expect(routes).toHaveLength(3 + RUNNING_TIPS.length)
-    expect(routes.map(r => r.path)).toContain('/')
-    expect(routes.map(r => r.path)).toContain('/outfit')
-    expect(routes.map(r => r.path)).toContain('/tips')
+    expect(routes).toHaveLength(6 + RUNNING_TIPS.length)
+    for (const staticPath of ['/', '/hours', '/gear', '/tip', '/outfit', '/tips']) {
+      expect(routes.map(r => r.path)).toContain(staticPath)
+    }
     for (const { lastmod } of routes) {
       expect(lastmod).toMatch(/^\d{4}-\d{2}-\d{2}$/)
     }

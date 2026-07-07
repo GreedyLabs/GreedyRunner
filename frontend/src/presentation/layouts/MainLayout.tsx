@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
+import { Activity, BarChart3, Backpack, Lightbulb, MapPin, Moon, Sun } from 'lucide-react';
 import { usePWAInstall } from '../../hooks/usePWAInstall';
+import { useTheme } from '../../application/hooks/useTheme';
 import { PWAInstallBanner } from '../components/shared/PWAInstallBanner';
+import { cn } from '../../lib/cn';
 
 interface MainLayoutProps {
   children: React.ReactNode;
+  regionName?: string | null;
 }
 
 interface VisitorStats {
@@ -12,9 +16,15 @@ interface VisitorStats {
   total: number;
 }
 
-export function MainLayout({ children }: MainLayoutProps) {
-  const { pathname } = useLocation();
-  const isHome = pathname === '/';
+const NAV_ITEMS = [
+  { to: '/', label: '오늘', icon: Activity, end: true },
+  { to: '/hours', label: '시간대', icon: BarChart3, end: false },
+  { to: '/gear', label: '준비물', icon: Backpack, end: false },
+  { to: '/tip', label: '팁', icon: Lightbulb, end: false },
+];
+
+export function MainLayout({ children, regionName }: MainLayoutProps) {
+  const { mode, toggle } = useTheme();
   const [stats, setStats] = useState<VisitorStats | null>(null);
   const { showBanner, handleInstall, handleDismiss } = usePWAInstall();
 
@@ -34,48 +44,27 @@ export function MainLayout({ children }: MainLayoutProps) {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-100">
-      {/* 헤더 */}
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-50 shadow-sm">
+    <div className="min-h-screen bg-paper text-ink flex flex-col">
+      {/* 상단 바 */}
+      <header className="bg-paper border-b border-line sticky top-0 z-50">
         <div className="max-w-2xl mx-auto px-3 sm:px-4 h-12 sm:h-14 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-1.5 sm:gap-2">
-            <span className="text-lg sm:text-xl">🏃</span>
-            <span className="font-bold text-gray-800 text-sm sm:text-base">GreedyRunner</span>
-          </Link>
-          <Link
-            to={isHome ? '/outfit' : '/'}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 text-[10px] sm:text-xs font-medium hover:bg-blue-100 active:scale-95 transition-all"
+          <div className="flex items-center gap-1.5 text-sm sm:text-base font-bold">
+            <MapPin className="w-4 h-4 text-accent" />
+            <span>{regionName ?? 'GreedyRunner'}</span>
+          </div>
+          <button
+            type="button"
+            onClick={toggle}
+            aria-label="테마 전환"
+            className="flex items-center justify-center w-9 h-9 rounded-xl bg-panel border border-line text-ink hover:opacity-80 active:scale-95 transition"
           >
-            {isHome ? (
-              <>
-                <span>👕</span>
-                <span>옷차림 추천</span>
-              </>
-            ) : (
-              <>
-                <span>🏃</span>
-                <span>러닝 지수</span>
-              </>
-            )}
-            <svg
-              className="w-3 h-3 opacity-60"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2.5}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d={isHome ? 'M9 5l7 7-7 7' : 'M15 19l-7-7 7-7'}
-              />
-            </svg>
-          </Link>
+            {mode === 'dark' ? <Sun className="w-[18px] h-[18px]" /> : <Moon className="w-[18px] h-[18px]" />}
+          </button>
         </div>
       </header>
 
       {/* 메인 콘텐츠 */}
-      <main className="max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-3 sm:space-y-4">
+      <main className="flex-1 max-w-2xl w-full mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-3 sm:space-y-4">
         {children}
       </main>
 
@@ -83,27 +72,47 @@ export function MainLayout({ children }: MainLayoutProps) {
         <PWAInstallBanner onInstall={handleInstall} onDismiss={handleDismiss} />
       )}
 
+      {/* 하단 탭 내비게이션 */}
+      <nav className="sticky bottom-0 z-50 bg-paper border-t border-line">
+        <div className="max-w-2xl mx-auto px-2 flex justify-around">
+          {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={end}
+              className={({ isActive }) =>
+                cn(
+                  'flex flex-col items-center gap-1 py-2.5 px-4 text-[10px]',
+                  isActive ? 'text-accent font-bold' : 'text-faint font-normal'
+                )
+              }
+            >
+              <Icon className="w-5 h-5" />
+              <span>{label}</span>
+            </NavLink>
+          ))}
+        </div>
+      </nav>
+
       {/* 푸터 */}
       <footer className="max-w-2xl mx-auto px-3 sm:px-4 py-6 text-center space-y-2">
         {stats && (
-          <div className="flex items-center justify-center gap-3 text-[10px] sm:text-xs text-gray-400">
+          <div className="flex items-center justify-center gap-3 text-[10px] sm:text-xs text-muted">
             <span>
-              Today{' '}
-              <span className="font-semibold text-gray-500">{stats.today.toLocaleString()}</span>
+              Today <span className="font-semibold">{stats.today.toLocaleString()}</span>
             </span>
-            <span className="text-gray-300">|</span>
+            <span className="text-line">|</span>
             <span>
-              Total{' '}
-              <span className="font-semibold text-gray-500">{stats.total.toLocaleString()}</span>
+              Total <span className="font-semibold">{stats.total.toLocaleString()}</span>
             </span>
           </div>
         )}
-        <div className="flex items-center justify-center gap-1.5 text-[10px] sm:text-xs text-gray-400">
+        <div className="flex items-center justify-center gap-1.5 text-[10px] sm:text-xs text-muted">
           <span>Copyright 2026. GreedyLabs Co.</span>
-          <span className="text-gray-300">|</span>
+          <span className="text-line">|</span>
           <a
             href="mailto:hailey@greedylabs.kr?subject=[GreedyRunner] 문의"
-            className="text-gray-400 hover:text-gray-600 underline underline-offset-2 transition-colors"
+            className="underline underline-offset-2 hover:text-ink transition-colors"
           >
             개발자에게 피드백
           </a>
