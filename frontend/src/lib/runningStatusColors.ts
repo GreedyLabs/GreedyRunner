@@ -96,9 +96,9 @@ export const BEST_HOUR_COLORS = {
   textMuted: STATUS_COLORS.great.textMuted,
   dot: STATUS_COLORS.great.dot,
   glow: STATUS_COLORS.great.glow,
-  bannerBg: 'bg-blue-50',
-  bannerText: 'text-blue-700',
-  bannerTextMuted: 'text-blue-500',
+  bannerBg: 'bg-blue-50 dark:bg-blue-500/10',
+  bannerText: 'text-blue-700 dark:text-blue-300',
+  bannerTextMuted: 'text-blue-500 dark:text-blue-400',
 } as const
 
 export const CURRENT_HOUR_COLORS = {
@@ -111,3 +111,27 @@ export const SELECTED_HOUR_COLORS = {
   ring: 'ring-violet-500',
   ringCard: 'ring-violet-300',
 } as const
+
+/**
+ * Flat 3-tone semantic mapping used by the redesigned connected flow (score
+ * card, condition grid, gear/tip screens) — deliberately coarser than
+ * STATUS_COLORS' 5-way blue/emerald/amber/orange/red scale above, which stays
+ * in use for the 24-bar hourly timeline where finer distinction still helps.
+ */
+export type StatusTone = 'accent' | 'warn' | 'critical' | 'muted'
+
+export const STATUS_TONE: Record<RunningStatus, StatusTone> = {
+  great: 'accent',
+  good: 'accent',
+  caution: 'warn',
+  bad: 'critical',
+  worst: 'critical',
+  unknown: 'muted',
+}
+
+export const TONE_CLASSES: Record<StatusTone, { text: string; badgeBg: string; bar: string }> = {
+  accent: { text: 'text-accent', badgeBg: 'bg-accent-soft', bar: 'bg-accent' },
+  warn: { text: 'text-warn', badgeBg: 'bg-warn-soft', bar: 'bg-warn' },
+  critical: { text: 'text-critical', badgeBg: 'bg-critical-soft', bar: 'bg-critical' },
+  muted: { text: 'text-muted', badgeBg: 'bg-panel', bar: 'bg-bar' },
+}

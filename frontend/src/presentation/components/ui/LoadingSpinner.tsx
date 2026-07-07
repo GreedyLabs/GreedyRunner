@@ -12,7 +12,7 @@ export function LoadingSpinner({ size = 'md', className, label }: LoadingSpinner
   return (
     <div className={cn('flex flex-col items-center gap-3', className)}>
       <svg
-        className={cn('animate-spin text-blue-500', sizes[size])}
+        className={cn('animate-spin text-accent', sizes[size])}
         viewBox="0 0 24 24"
         fill="none"
       >
@@ -27,7 +27,7 @@ export function LoadingSpinner({ size = 'md', className, label }: LoadingSpinner
           d="M4 12a8 8 0 018-8v8H4z"
         />
       </svg>
-      {label && <p className="text-sm text-gray-500">{label}</p>}
+      {label && <p className="text-sm text-muted">{label}</p>}
     </div>
   )
 }

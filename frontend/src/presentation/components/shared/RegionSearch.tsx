@@ -1,4 +1,5 @@
 import { useRef, useState, useId } from 'react'
+import { MapPin, Search, LocateFixed, TriangleAlert } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { LoadingSpinner } from '../ui/LoadingSpinner'
 import { useRegionSearch } from '../../../application/hooks/useRegionSearch'
@@ -72,13 +73,13 @@ export function RegionSearch({
   const showDropdown = isDropdownOpen && (isSearching || results.length > 0)
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-5">
+    <div className="bg-panel rounded-2xl border border-line p-4 sm:p-5">
       {/* 현재 선택된 지역 표시 */}
       {selectedRegion && (
-        <div className="flex items-center gap-2 mb-3 text-xs sm:text-sm text-gray-500">
-          <span>📍</span>
-          <span className="font-medium text-gray-700">{selectedRegion.name}</span>
-          <span className="hidden sm:inline text-gray-300">|</span>
+        <div className="flex items-center gap-2 mb-3 text-xs sm:text-sm text-muted">
+          <MapPin className="w-3.5 h-3.5 text-accent" />
+          <span className="font-medium text-ink">{selectedRegion.name}</span>
+          <span className="hidden sm:inline text-line">|</span>
           <span className="hidden sm:inline">지역을 변경하려면 아래에서 검색하세요</span>
         </div>
       )}
@@ -90,9 +91,7 @@ export function RegionSearch({
             지역 검색
           </label>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-              🔍
-            </span>
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-faint" />
             <input
               id={inputId}
               ref={inputRef}
@@ -108,7 +107,7 @@ export function RegionSearch({
               aria-autocomplete="list"
               aria-controls={listboxId}
               aria-activedescendant={activeIndex >= 0 ? `${listboxId}-${activeIndex}` : undefined}
-              className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              className="w-full pl-9 pr-4 py-2.5 text-sm bg-paper text-ink border border-line rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition"
             />
             {isSearching && (
               <span className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -121,12 +120,12 @@ export function RegionSearch({
           {showDropdown && (
             <div
               ref={dropdownRef}
-              className="absolute z-20 top-full left-0 right-0 mt-1.5 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto"
+              className="absolute z-20 top-full left-0 right-0 mt-1.5 bg-panel border border-line rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto"
             >
               {isSearching && results.length === 0 ? (
-                <div className="px-4 py-3 text-sm text-gray-400 text-center">검색 중...</div>
+                <div className="px-4 py-3 text-sm text-muted text-center">검색 중...</div>
               ) : results.length === 0 ? (
-                <div className="px-4 py-3 text-sm text-gray-400 text-center">
+                <div className="px-4 py-3 text-sm text-muted text-center">
                   검색 결과가 없습니다
                 </div>
               ) : (
@@ -139,15 +138,15 @@ export function RegionSearch({
                         onMouseEnter={() => setActiveIndex(index)}
                         className={cn(
                           'w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center gap-3',
-                          activeIndex === index ? 'bg-blue-100 text-blue-700' :
-                          selectedRegion?.id === region.id ? 'bg-blue-50 text-blue-700' :
-                          'hover:bg-blue-50'
+                          activeIndex === index ? 'bg-accent-soft text-accent' :
+                          selectedRegion?.id === region.id ? 'bg-accent-soft text-accent' :
+                          'hover:bg-accent-soft'
                         )}
                       >
-                        <span className="text-gray-400">📍</span>
+                        <MapPin className="w-3.5 h-3.5 text-faint" />
                         <span>
-                          <span className="font-medium text-gray-800">{region.shortName}</span>
-                          <span className="text-gray-400 ml-1.5">{region.city}</span>
+                          <span className="font-medium text-ink">{region.shortName}</span>
+                          <span className="text-muted ml-1.5">{region.city}</span>
                         </span>
                       </button>
                     </li>
@@ -165,15 +164,15 @@ export function RegionSearch({
           isLoading={isLocating}
           className="shrink-0 whitespace-nowrap"
         >
-          {!isLocating && <span>📡</span>}
+          {!isLocating && <LocateFixed className="w-4 h-4" />}
           현재 위치
         </Button>
       </div>
 
       {/* 위치 오류 메시지 */}
       {locationError && (
-        <p className="mt-2 text-xs text-red-500 flex items-center gap-1">
-          <span>⚠️</span>
+        <p className="mt-2 text-xs text-critical flex items-center gap-1">
+          <TriangleAlert className="w-3.5 h-3.5" />
           {locationError}
         </p>
       )}

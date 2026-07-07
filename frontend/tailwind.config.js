@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: 'class',
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
@@ -11,6 +12,25 @@ export default {
           bad: '#f97316',
           worst: '#ef4444',
         },
+        // Neutral+emerald surface tokens for the redesigned connected flow
+        // (Home/Hours/Gear/Tip). Backed by CSS variables in index.css so
+        // light/dark swap automatically without needing dark: on every usage.
+        paper: 'var(--paper)',
+        panel: 'var(--panel)',
+        line: 'var(--line)',
+        ink: 'var(--ink)',
+        muted: 'var(--muted)',
+        faint: 'var(--faint)',
+        accent: 'var(--accent)',
+        'accent-soft': 'var(--accent-soft)',
+        warn: 'var(--warn)',
+        'warn-soft': 'var(--warn-soft)',
+        critical: 'var(--critical)',
+        'critical-soft': 'var(--critical-soft)',
+        bar: 'var(--bar)',
+      },
+      fontFamily: {
+        display: ['Archivo', 'sans-serif'],
       },
       animation: {
         'fade-in': 'fadeIn 0.4s ease-out',

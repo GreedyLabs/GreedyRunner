@@ -54,8 +54,8 @@ export function HourlyForecast({
   return (
     <Card className="animate-slide-up">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-bold text-gray-800 text-base">러닝 타임라인</h3>
-        <span className="text-xs text-gray-400">24시간 예보</span>
+        <h3 className="font-bold text-ink text-base">러닝 타임라인</h3>
+        <span className="text-xs text-faint">24시간 예보</span>
       </div>
 
       {bestHourLabel ? (
@@ -66,10 +66,10 @@ export function HourlyForecast({
           </div>
         </div>
       ) : (
-        <div className="bg-amber-50 rounded-xl p-3 mb-4 flex items-center gap-2">
+        <div className="bg-warn-soft rounded-xl p-3 mb-4 flex items-center gap-2">
           <div>
-            <p className="text-xs text-amber-500 font-medium">오늘은 야외 러닝이 어려운 날이에요</p>
-            <p className="text-sm font-bold text-amber-700">실내 운동이나 휴식을 추천합니다</p>
+            <p className="text-xs text-warn font-medium">오늘은 야외 러닝이 어려운 날이에요</p>
+            <p className="text-sm font-bold text-warn">실내 운동이나 휴식을 추천합니다</p>
           </div>
         </div>
       )}
@@ -102,14 +102,14 @@ export function HourlyForecast({
                   aria-label={`${dayPrefix}${hour}시 러닝지수 ${runningIndex.score}점`}
                   className={cn(
                     'relative flex-1 flex flex-col items-center justify-end gap-0.5 cursor-pointer group',
-                    showDayDivider && 'border-l border-dashed border-gray-300 pl-[2px]',
+                    showDayDivider && 'border-l border-dashed border-line pl-[2px]',
                   )}
                   onClick={() => onHourSelect(hourData)}
                 >
                   {/* 호버 툴팁 */}
                   <div
                     role="tooltip"
-                    className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 rounded-md bg-gray-800 text-white text-[10px] font-semibold whitespace-nowrap shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20"
+                    className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 rounded-md bg-ink text-paper text-[10px] font-semibold whitespace-nowrap shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20"
                   >
                     {dayPrefix}{hour}시 · {runningIndex.score}점
                   </div>
@@ -170,8 +170,8 @@ export function HourlyForecast({
                       isSelected ? 'text-violet-600 font-semibold'
                         : isNow ? 'text-blue-600 font-semibold'
                         : isBest ? cn(BEST_HOUR_COLORS.textMuted, 'font-semibold')
-                        : showNextDayLabel ? 'text-gray-500 font-semibold'
-                        : 'text-gray-300',
+                        : showNextDayLabel ? 'text-muted font-semibold'
+                        : 'text-faint',
                     )}
                   >
                     {showNextDayLabel ? '내일'
@@ -190,13 +190,15 @@ export function HourlyForecast({
       </div>
 
       {/* 범례 */}
-      <div className="flex justify-between sm:justify-start sm:gap-3 mt-3 pt-3 border-t border-gray-100">
-        {Object.entries(STATUS_COLORS).map(([status, colors]) => (
-          <div key={status} className="flex items-center gap-1">
-            <div className={cn('w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-[3px]', colors.bar)} />
-            <span className={cn('text-[10px] sm:text-xs', colors.text)}>{STATUS_LEGEND[status]}</span>
-          </div>
-        ))}
+      <div className="flex justify-between sm:justify-start sm:gap-3 mt-3 pt-3 border-t border-line">
+        {Object.entries(STATUS_COLORS)
+          .filter(([status]) => status in STATUS_LEGEND)
+          .map(([status, colors]) => (
+            <div key={status} className="flex items-center gap-1">
+              <div className={cn('w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-[3px]', colors.bar)} />
+              <span className={cn('text-[10px] sm:text-xs', colors.text)}>{STATUS_LEGEND[status]}</span>
+            </div>
+          ))}
       </div>
     </Card>
   );
