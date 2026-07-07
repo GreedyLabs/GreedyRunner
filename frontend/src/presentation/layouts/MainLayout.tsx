@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { Activity, BarChart3, Backpack, Lightbulb, MapPin, Moon, Sun } from 'lucide-react';
 import { usePWAInstall } from '../../hooks/usePWAInstall';
 import { useTheme } from '../../application/hooks/useTheme';
@@ -20,11 +20,13 @@ const NAV_ITEMS = [
   { to: '/', label: '오늘', icon: Activity, end: true },
   { to: '/hours', label: '시간대', icon: BarChart3, end: false },
   { to: '/gear', label: '준비물', icon: Backpack, end: false },
-  { to: '/tip', label: '팁', icon: Lightbulb, end: false },
+  // 팁 상세(/tips, /tips/:id)도 "팁" 탭에 속하므로 함께 활성화한다.
+  { to: '/tip', label: '팁', icon: Lightbulb, end: false, activeWhen: (pathname: string) => pathname.startsWith('/tip') },
 ];
 
 export function MainLayout({ children, regionName }: MainLayoutProps) {
   const { mode, toggle } = useTheme();
+  const { pathname } = useLocation();
   const [stats, setStats] = useState<VisitorStats | null>(null);
   const { showBanner, handleInstall, handleDismiss } = usePWAInstall();
 
@@ -75,7 +77,7 @@ export function MainLayout({ children, regionName }: MainLayoutProps) {
       {/* 하단 탭 내비게이션 */}
       <nav className="sticky bottom-0 z-50 bg-paper border-t border-line">
         <div className="max-w-2xl mx-auto px-2 flex justify-around">
-          {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
+          {NAV_ITEMS.map(({ to, label, icon: Icon, end, activeWhen }) => (
             <NavLink
               key={to}
               to={to}
@@ -83,7 +85,7 @@ export function MainLayout({ children, regionName }: MainLayoutProps) {
               className={({ isActive }) =>
                 cn(
                   'flex flex-col items-center gap-1 py-2.5 px-4 text-[10px]',
-                  isActive ? 'text-accent font-bold' : 'text-faint font-normal'
+                  isActive || activeWhen?.(pathname) ? 'text-accent font-bold' : 'text-faint font-normal'
                 )
               }
             >
