@@ -1,17 +1,9 @@
 import type { ReactNode } from 'react'
 import { useParams, Link, useLocation } from 'react-router-dom'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { RUNNING_TIPS } from '../../lib/runningTips'
 import { Card } from '../components/ui/Card'
 import { NotFoundPage } from './NotFoundPage'
-
-const CATEGORY_COLOR: Record<string, string> = {
-  '페이스': 'bg-blue-100 text-blue-600',
-  '기상':   'bg-sky-100 text-sky-600',
-  '영양':   'bg-emerald-100 text-emerald-600',
-  '장비':   'bg-violet-100 text-violet-600',
-  '회복':   'bg-amber-100 text-amber-600',
-  '호흡':   'bg-teal-100 text-teal-600',
-}
 
 export function RunningTipPage() {
   const { id } = useParams<{ id: string }>()
@@ -21,7 +13,6 @@ export function RunningTipPage() {
 
   if (!tip) return <NotFoundPage />
 
-  const categoryColor = CATEGORY_COLOR[tip.category] ?? 'bg-gray-100 text-gray-600'
   const relatedTips = RUNNING_TIPS.filter(t => t.category === tip.category && t.id !== tip.id).slice(0, 3)
 
   // 단락 구분(\n\n), 굵게(**text**), 표(| 로 시작) 처리
@@ -37,11 +28,11 @@ export function RunningTipPage() {
                 const cells = row.split('|').filter(c => c.trim() !== '')
                 const Tag = ri === 0 ? 'th' : 'td'
                 return (
-                  <tr key={ri} className={ri === 0 ? 'bg-gray-50' : ri % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
+                  <tr key={ri} className={ri === 0 ? 'bg-accent-soft' : ri % 2 === 0 ? '' : 'bg-paper/50'}>
                     {cells.map((cell, ci) => (
                       <Tag
                         key={ci}
-                        className="border border-gray-200 px-3 py-1.5 text-left font-normal text-gray-700"
+                        className={`border border-line px-3 py-1.5 text-left font-normal ${ri === 0 ? 'text-accent font-semibold' : 'text-muted'}`}
                       >
                         {cell.trim()}
                       </Tag>
@@ -60,7 +51,7 @@ export function RunningTipPage() {
       const parts = text.split(/(\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\))/)
       return parts.map((part, pi) => {
         if (part.startsWith('**') && part.endsWith('**')) {
-          return <strong key={pi} className="font-semibold text-gray-800">{part.slice(2, -2)}</strong>
+          return <strong key={pi} className="font-semibold text-ink">{part.slice(2, -2)}</strong>
         }
 
         const linkMatch = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/)
@@ -71,7 +62,7 @@ export function RunningTipPage() {
               href={linkMatch[2]}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-medium text-blue-600 underline underline-offset-2 decoration-blue-200 hover:text-blue-700"
+              className="font-medium text-accent underline underline-offset-2 decoration-accent/30 hover:opacity-80"
             >
               {linkMatch[1]}
             </a>
@@ -91,8 +82,8 @@ export function RunningTipPage() {
       rendered.push(
         <ul key={key} className="space-y-1 list-none">
           {bullets.map((item, bi) => (
-            <li key={bi} className="flex gap-2 text-xs sm:text-sm text-gray-600 leading-relaxed">
-              <span className="text-gray-400 shrink-0 mt-0.5" aria-hidden="true">•</span>
+            <li key={bi} className="flex gap-2 text-xs sm:text-sm text-muted leading-relaxed">
+              <span className="text-faint shrink-0 mt-0.5" aria-hidden="true">•</span>
               <span>{renderInline(item)}</span>
             </li>
           ))}
@@ -108,14 +99,14 @@ export function RunningTipPage() {
       flushBullets(`ul-${li}`)
       if (line.startsWith('**') && line.endsWith('**')) {
         rendered.push(
-          <h2 key={li} className="font-semibold text-gray-800 text-sm sm:text-base mt-3">
+          <h2 key={li} className="font-semibold text-ink text-sm sm:text-base mt-3">
             {line.slice(2, -2)}
           </h2>
         )
         return
       }
       rendered.push(
-        <p key={li} className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+        <p key={li} className="text-xs sm:text-sm text-muted leading-relaxed">
           {renderInline(line)}
         </p>
       )
@@ -133,32 +124,30 @@ export function RunningTipPage() {
       {/* 뒤로가기 */}
       <Link
         to={backUrl}
-        className="inline-flex items-center gap-1.5 text-xs sm:text-sm text-gray-400 hover:text-gray-600 transition-colors"
+        className="inline-flex items-center gap-1 text-[13px] text-muted hover:text-ink transition-colors"
       >
-        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-        </svg>
+        <ChevronLeft className="w-[15px] h-[15px]" />
         러닝 팁 목록
       </Link>
 
       {/* 본문 카드 */}
       <Card>
         <div className="flex items-center gap-2 mb-3">
-          <span className={`text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full ${categoryColor}`}>
+          <span className="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-accent-soft text-accent">
             {tip.category}
           </span>
-          <span className="text-[10px] sm:text-xs text-gray-400">러닝 팁</span>
+          <span className="text-[10px] sm:text-xs text-muted">러닝 팁</span>
         </div>
-        <h1 className="text-lg sm:text-xl font-bold text-gray-800 mb-4 leading-snug">
+        <h1 className="text-lg sm:text-xl font-bold text-ink mb-4 leading-snug">
           {tip.emoji} {tip.title}
         </h1>
-        <p className="text-sm text-gray-600 leading-relaxed mb-6 pb-4 border-b border-gray-100">
+        <p className="text-sm text-muted leading-relaxed mb-6 pb-4 border-b border-line">
           {tip.summary}
         </p>
         <div className="space-y-4">
           {paragraphs}
         </div>
-        <p className="mt-6 pt-3 border-t border-gray-100 text-[10px] sm:text-xs text-gray-400">
+        <p className="mt-6 pt-3 border-t border-line text-[10px] sm:text-xs text-faint">
           <time dateTime={tip.updatedAt ?? tip.publishedAt}>
             {(tip.updatedAt ?? tip.publishedAt).split('-').join('. ')}.
           </time>{' '}
@@ -169,7 +158,7 @@ export function RunningTipPage() {
       {/* 같은 카테고리의 관련 팁 — 내부 링크 강화 */}
       {relatedTips.length > 0 && (
         <Card>
-          <h2 className="text-sm sm:text-base font-semibold text-gray-800 mb-3">
+          <h2 className="text-sm sm:text-base font-semibold text-ink mb-3">
             관련 {tip.category} 팁
           </h2>
           <ul className="space-y-2">
@@ -177,10 +166,10 @@ export function RunningTipPage() {
               <li key={related.id}>
                 <Link
                   to={`/tips/${related.id}`}
-                  className="flex items-start gap-2 text-xs sm:text-sm text-gray-600 hover:text-blue-600 transition-colors"
+                  className="flex items-start gap-2 text-xs sm:text-sm text-muted hover:text-accent transition-colors"
                 >
                   <span aria-hidden="true">{related.emoji}</span>
-                  <span className="underline underline-offset-2 decoration-gray-200">
+                  <span className="underline underline-offset-2 decoration-line">
                     {related.title}
                   </span>
                 </Link>
@@ -192,12 +181,10 @@ export function RunningTipPage() {
 
       <Link
         to="/tips"
-        className="inline-flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600 transition-colors px-1"
+        className="inline-flex items-center gap-1 text-xs text-accent hover:opacity-80 transition-opacity px-1"
       >
         모든 팁 보기
-        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-        </svg>
+        <ChevronRight className="w-3 h-3" />
       </Link>
     </div>
   )

@@ -20,8 +20,9 @@ const NAV_ITEMS = [
   { to: '/', label: '오늘', icon: Activity, end: true },
   { to: '/hours', label: '시간대', icon: BarChart3, end: false },
   { to: '/gear', label: '준비물', icon: Backpack, end: false },
-  // 팁 상세(/tips, /tips/:id)도 "팁" 탭에 속하므로 함께 활성화한다.
-  { to: '/tip', label: '팁', icon: Lightbulb, end: false, activeWhen: (pathname: string) => pathname.startsWith('/tip') },
+  // 팁 탭바는 전체 팁 목록(/tips)으로 이동한다. 오늘 조건 팁 상세(/tip)와
+  // 개별 팁 상세(/tips/:id)도 "팁" 탭에 속하므로 함께 활성화한다.
+  { to: '/tips', label: '팁', icon: Lightbulb, end: false, activeWhen: (pathname: string) => pathname.startsWith('/tip') },
 ];
 
 export function MainLayout({ children, regionName }: MainLayoutProps) {

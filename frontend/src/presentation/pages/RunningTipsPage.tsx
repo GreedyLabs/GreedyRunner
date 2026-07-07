@@ -1,4 +1,5 @@
 import { Link, useSearchParams } from 'react-router-dom'
+import { Search, ChevronRight } from 'lucide-react'
 import { RUNNING_TIPS } from '../../lib/runningTips'
 import type { RunningTip } from '../../lib/runningTips'
 import { Card } from '../components/ui/Card'
@@ -15,15 +16,6 @@ const CATEGORIES: Array<Category | '전체'> = [
   '회복',
   '호흡',
 ]
-
-const CATEGORY_COLOR: Record<string, string> = {
-  '페이스': 'bg-blue-100 text-blue-600',
-  '기상':   'bg-sky-100 text-sky-600',
-  '영양':   'bg-emerald-100 text-emerald-600',
-  '장비':   'bg-violet-100 text-violet-600',
-  '회복':   'bg-amber-100 text-amber-600',
-  '호흡':   'bg-teal-100 text-teal-600',
-}
 
 export function RunningTipsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -66,38 +58,26 @@ export function RunningTipsPage() {
     <div className="space-y-4 animate-slide-up">
       {/* 헤더 */}
       <div>
-        <h1 className="text-lg sm:text-xl font-bold text-gray-800">러닝 팁</h1>
-        <p className="text-xs sm:text-sm text-gray-400 mt-0.5">
+        <h1 className="text-[23px] font-extrabold leading-snug tracking-tight">러닝 팁</h1>
+        <p className="text-[13px] text-muted mt-1">
           더 잘 달리기 위한 {RUNNING_TIPS.length}가지 팁
         </p>
       </div>
 
       {/* 검색 인풋 */}
       <div className="relative">
-        <svg
-          className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2.5}
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"
-          />
-        </svg>
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-faint pointer-events-none" />
         <input
           type="search"
           value={keyword}
           onChange={e => setKeyword(e.target.value)}
           placeholder="팁 검색…"
-          className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl border border-gray-200 bg-white shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-300 transition"
+          className="w-full pl-9 pr-4 py-2.5 text-sm bg-paper text-ink border border-line rounded-xl placeholder:text-faint focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition"
         />
       </div>
 
       {/* 카테고리 필터 칩 */}
-      <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+      <div className="flex flex-wrap gap-1.5">
         {CATEGORIES.map(cat => (
           <button
             key={cat}
@@ -106,8 +86,8 @@ export function RunningTipsPage() {
             className={cn(
               'shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors',
               selectedCategory === cat
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
+                ? 'bg-accent text-white'
+                : 'bg-panel border border-line text-muted hover:text-ink',
             )}
           >
             {cat}
@@ -119,45 +99,34 @@ export function RunningTipsPage() {
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <span className="text-3xl mb-3">🔍</span>
-          <p className="text-sm font-semibold text-gray-500">검색 결과가 없습니다</p>
-          <p className="text-xs text-gray-400 mt-1">다른 키워드나 카테고리로 검색해 보세요</p>
+          <p className="text-sm font-semibold text-ink">검색 결과가 없습니다</p>
+          <p className="text-xs text-muted mt-1">다른 키워드나 카테고리로 검색해 보세요</p>
         </div>
       ) : (
         <div className="space-y-2">
-          {filtered.map(tip => {
-            const categoryColor = CATEGORY_COLOR[tip.category] ?? 'bg-gray-100 text-gray-600'
-            return (
-              <Link key={tip.id} to={`/tips/${tip.id}`} state={{ backUrl: `/tips${searchParams.toString() ? `?${searchParams.toString()}` : ''}` }} className="block">
-                <Card className="hover:border-blue-200 hover:shadow-sm transition-all active:scale-[0.99]">
-                  <div className="flex items-start gap-3">
-                    <span className="text-2xl shrink-0 leading-none mt-0.5">{tip.emoji}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-full', categoryColor)}>
-                          {tip.category}
-                        </span>
-                      </div>
-                      <p className="text-sm font-semibold text-gray-800 leading-snug mb-1">
-                        {tip.title}
-                      </p>
-                      <p className="text-xs text-gray-500 leading-relaxed line-clamp-2">
-                        {tip.summary}
-                      </p>
-                    </div>
-                    <svg
-                      className="w-3.5 h-3.5 text-gray-300 shrink-0 mt-1"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={2.5}
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                    </svg>
+          {filtered.map(tip => (
+            <Link key={tip.id} to={`/tips/${tip.id}`} state={{ backUrl: `/tips${searchParams.toString() ? `?${searchParams.toString()}` : ''}` }} className="block">
+              <Card padding="none" className="px-[15px] py-[13px] hover:bg-paper/50 transition-colors active:scale-[0.99]">
+                <div className="flex items-start gap-3">
+                  <span className="flex-none w-[34px] h-[34px] rounded-[10px] bg-accent-soft flex items-center justify-center text-lg mt-0.5">
+                    {tip.emoji}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <span className="inline-flex text-[10px] font-bold px-2 py-0.5 rounded-full bg-accent-soft text-accent mb-1">
+                      {tip.category}
+                    </span>
+                    <p className="text-sm font-semibold text-ink leading-snug mb-1">
+                      {tip.title}
+                    </p>
+                    <p className="text-xs text-muted leading-relaxed line-clamp-2">
+                      {tip.summary}
+                    </p>
                   </div>
-                </Card>
-              </Link>
-            )
-          })}
+                  <ChevronRight className="w-[15px] h-[15px] text-faint shrink-0 mt-1" />
+                </div>
+              </Card>
+            </Link>
+          ))}
         </div>
       )}
     </div>
