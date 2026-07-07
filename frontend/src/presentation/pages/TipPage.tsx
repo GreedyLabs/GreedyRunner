@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, Check, X } from 'lucide-react'
+import { ChevronRight, Check, X, ArrowRight, List } from 'lucide-react'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { getConditionTip } from '../../lib/getConditionTip'
 import { RUNNING_TIPS } from '../../lib/runningTips'
@@ -16,14 +16,9 @@ export function TipPage({ data, displayHour }: TipPageProps) {
 
   return (
     <>
-      <Link to="/" className="inline-flex items-center gap-1 text-muted text-[13px]">
-        <ChevronLeft className="w-[15px] h-[15px]" />
-        홈으로
-      </Link>
-
       {tip ? (
         <>
-          <div className="mt-3.5 flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <span className="whitespace-nowrap text-[11px] font-bold px-2.5 py-1 rounded-full bg-accent-soft text-accent">
               {tip.category}
             </span>
@@ -75,7 +70,7 @@ export function TipPage({ data, displayHour }: TipPageProps) {
         </>
       ) : (
         <>
-          <h1 className="mt-3.5 text-[23px] font-extrabold leading-snug tracking-tight">
+          <h1 className="text-[23px] font-extrabold leading-snug tracking-tight">
             오늘 조건에 맞는 러닝 팁
           </h1>
           <div className="flex justify-center py-12">
@@ -83,6 +78,14 @@ export function TipPage({ data, displayHour }: TipPageProps) {
           </div>
         </>
       )}
+
+      <Link to="/tips" className="w-full mt-6 flex items-center justify-between bg-accent rounded-2xl px-[18px] py-4">
+        <span className="flex items-center gap-2.5 text-white text-sm font-bold">
+          <List className="w-[18px] h-[18px]" />
+          전체 러닝 팁 목록 보기
+        </span>
+        <ArrowRight className="w-[18px] h-[18px] text-white" />
+      </Link>
 
       <section className="mt-8 pt-6 border-t border-line">
         <h2 className="text-base font-bold mb-3">오늘 조건에 맞춰 달리는 법</h2>
