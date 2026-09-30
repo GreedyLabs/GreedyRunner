@@ -11,8 +11,17 @@ interface BestHour {
 interface HourlyForecastProps {
   forecast: HourlyForecastType[];
   bestHours: BestHour[];
-  selectedHour: number | null;
+  /**
+   * 선택된 바. hour 숫자만 받던 시절에는 오늘 6시를 고르면 내일 6시 바까지 함께
+   * 강조됐다(isBestHour는 isNextDay를 보는데 선택 비교만 보지 않았다).
+   */
+  selectedHour: HourlyForecastType | null;
   onHourSelect: (hourData: HourlyForecastType) => void;
+}
+
+/** 오늘/내일을 구분하는 바 식별자. */
+function barKey(hour: number, isNextDay?: boolean): string {
+  return `${isNextDay ? 'next' : 'today'}-${hour}`;
 }
 
 const BAR_MAX = 92;
@@ -38,6 +47,8 @@ export function HourlyForecast({
     return bestHours.some((b) => b.hour === hour && b.isNextDay === !!isNextDay);
   }
 
+  const selectedKey = selectedHour ? barKey(selectedHour.hour, selectedHour.isNextDay) : null;
+
   return (
     <Card className="animate-slide-up">
       {/* 바 차트 */}
@@ -49,12 +60,15 @@ export function HourlyForecast({
               const { hour, runningIndex, isNextDay } = hourData;
               const isNow = index === 0;
               const isBest = isBestHour(hour, isNextDay);
-              const isSelected = selectedHour === hour;
-              const barH = Math.max(6, (runningIndex.score / 100) * BAR_MAX);
+              const isSelected = selectedKey === barKey(hour, isNextDay);
+              // 'unknown'은 점수 0으로 내려오지만 "최악"이 아니라 "측정 불가"다.
+              // 0점 막대로 그리면 대기질이 최악인 시간대와 구분되지 않는다.
+              const isUnknown = runningIndex.status === 'unknown';
+              const barH = isUnknown ? 6 : Math.max(6, (runningIndex.score / 100) * BAR_MAX);
 
               // 색은 프로토타입과 동일한 3단계: 추천→accent, 현재→ink, 그 외→bar(중립 회색)
-              const barColor = isBest ? 'bg-accent' : isNow ? 'bg-ink' : 'bg-bar';
-              const showScore = isNow || isBest || isSelected;
+              const barColor = isUnknown ? 'bg-bar opacity-50' : isBest ? 'bg-accent' : isNow ? 'bg-ink' : 'bg-bar';
+              const showScore = !isUnknown && (isNow || isBest || isSelected);
 
               const prevItem = index > 0 ? forecast[index - 1] : null;
               const showDayDivider = isNextDay && prevItem && !prevItem.isNextDay;
@@ -65,7 +79,7 @@ export function HourlyForecast({
                   key={`${isNextDay ? 'next' : 'today'}-${hour}`}
                   ref={isNow ? currentBarRef : undefined}
                   type="button"
-                  aria-label={`${dayPrefix}${hour}시 러닝지수 ${runningIndex.score}점`}
+                  aria-label={`${dayPrefix}${hour}시 ${isUnknown ? '측정 불가' : `러닝지수 ${runningIndex.score}점`}`}
                   className={cn(
                     'group relative flex-1 flex flex-col items-center gap-1.5 cursor-pointer',
                     showDayDivider && 'border-l border-dashed border-line pl-[2px]',
@@ -103,7 +117,7 @@ export function HourlyForecast({
           <div className="flex gap-[3px] sm:gap-1.5 mt-1.5">
             {forecast.map(({ hour, isNextDay }, index) => {
               const isNow = index === 0;
-              const isSelected = selectedHour === hour;
+              const isSelected = selectedKey === barKey(hour, isNextDay);
               const isBest = isBestHour(hour, isNextDay);
 
               const prevItem = index > 0 ? forecast[index - 1] : null;

@@ -22,7 +22,7 @@ export function RegionSearch({
   selectedRegion,
 }: RegionSearchProps) {
   const inputId = useId()
-  const { query, results, isSearching, setQuery, closeDropdown } = useRegionSearch()
+  const { query, results, isSearching, error, setQuery, closeDropdown } = useRegionSearch()
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -70,7 +70,13 @@ export function RegionSearch({
     setTimeout(() => setIsDropdownOpen(false), 150)
   }
 
-  const showDropdown = isDropdownOpen && (isSearching || results.length > 0)
+  // 결과 0건과 실패도 드롭다운을 열어 둔다.
+  // 예전 조건(isSearching || results.length > 0)에서는 결과가 비면 드롭다운이 조용히 닫혀
+  // "결과가 없음"과 "검색이 실패함"을 구분할 수 없었고, 아래의 '검색 결과가 없습니다'
+  // 분기는 어떤 상태에서도 도달하지 않는 죽은 코드였다.
+  // 검색어가 있고 드롭다운이 열려 있으면 항상 보여 준다 — 상태(검색 중·결과·없음·실패)는
+  // 드롭다운 안에서 구분한다.
+  const showDropdown = isDropdownOpen && query.trim().length > 0
 
   return (
     <div className="bg-panel rounded-2xl border border-line p-4 sm:p-5">
@@ -123,32 +129,44 @@ export function RegionSearch({
               className="absolute z-20 top-full left-0 right-0 mt-1.5 bg-panel border border-line rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto"
             >
               {isSearching && results.length === 0 ? (
-                <div className="px-4 py-3 text-sm text-muted text-center">검색 중...</div>
+                <div className="px-4 py-3 text-sm text-muted text-center" role="status">검색 중...</div>
+              ) : error ? (
+                <div className="px-4 py-3 text-sm text-critical text-center" role="status">
+                  {error}
+                </div>
               ) : results.length === 0 ? (
-                <div className="px-4 py-3 text-sm text-muted text-center">
+                <div className="px-4 py-3 text-sm text-muted text-center" role="status">
                   검색 결과가 없습니다
                 </div>
               ) : (
                 <ul id={listboxId} role="listbox">
+                  {/*
+                    항목을 <li role="option">에 직접 달고 포커스 가능한 <button>은 두지 않는다.
+                    예전에는 li 안에 button이 있어 (1) 그 button이 탭 순서에 들어가는데
+                    onMouseDown만 받아 포커스된 상태에서 Enter·Space가 무반응이었고(WCAG 2.1.1),
+                    (2) role="option" 안에 포커스 가능한 요소가 들어가 ARIA 구조 규칙을 위반했다.
+                    조작은 입력창의 ArrowUp/ArrowDown + Enter(handleKeyDown)가 담당한다.
+                  */}
                   {results.map((region, index) => (
-                    <li key={region.id} id={`${listboxId}-${index}`} role="option" aria-selected={selectedRegion?.id === region.id}>
-                      <button
-                        type="button"
-                        onMouseDown={() => handleSelect(region)}
-                        onMouseEnter={() => setActiveIndex(index)}
-                        className={cn(
-                          'w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center gap-3',
-                          activeIndex === index ? 'bg-accent-soft text-accent' :
-                          selectedRegion?.id === region.id ? 'bg-accent-soft text-accent' :
-                          'hover:bg-accent-soft'
-                        )}
-                      >
-                        <MapPin className="w-3.5 h-3.5 text-faint" />
-                        <span>
-                          <span className="font-medium text-ink">{region.shortName}</span>
-                          <span className="text-muted ml-1.5">{region.city}</span>
-                        </span>
-                      </button>
+                    <li
+                      key={region.id}
+                      id={`${listboxId}-${index}`}
+                      role="option"
+                      aria-selected={activeIndex === index}
+                      onMouseDown={() => handleSelect(region)}
+                      onMouseEnter={() => setActiveIndex(index)}
+                      className={cn(
+                        'cursor-pointer px-4 py-2.5 text-sm transition-colors flex items-center gap-3',
+                        activeIndex === index || selectedRegion?.id === region.id
+                          ? 'bg-accent-soft text-accent'
+                          : 'hover:bg-accent-soft'
+                      )}
+                    >
+                      <MapPin className="w-3.5 h-3.5 text-faint" />
+                      <span>
+                        <span className="font-medium text-ink">{region.shortName}</span>
+                        <span className="text-muted ml-1.5">{region.city}</span>
+                      </span>
                     </li>
                   ))}
                 </ul>

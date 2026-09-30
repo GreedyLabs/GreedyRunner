@@ -61,6 +61,17 @@ export function HomePage({
 
       {data && !isLoading && (
         <>
+          {/*
+            대기질 쪽 상태도 함께 알린다. 백엔드가 serviceStatus.airKorea를 'ok'로 고정하던
+            시절에는 이 값을 띄울 수 없었고, 그래서 에어코리아가 통째로 실패해도 화면에는
+            아무 경고 없이 '측정 불가' 숫자만 나왔다.
+          */}
+          {data.serviceStatus?.airKorea === 'timeout' && (
+            <ServiceNotice title="에어코리아 응답 지연" body="측정소 데이터를 가져오지 못했습니다. 잠시 후 다시 시도해 주세요." />
+          )}
+          {data.serviceStatus?.airKorea === 'error' && (
+            <ServiceNotice title="에어코리아 장애" body="측정소 데이터를 가져오지 못했습니다. 잠시 후 다시 시도해 주세요." />
+          )}
           {data.serviceStatus?.weather === 'timeout' && (
             <ServiceNotice title="기상청 API 허브 응답 지연" body="날씨 정보를 가져올 수 없어 대기질 기반으로만 달리기 지수를 계산했습니다." />
           )}
@@ -98,13 +109,13 @@ function ServiceNotice({ title, body }: { title: string; body: string }) {
 }
 
 function TimelinePreview({ data }: { data: AirQualityData }) {
-  // 실제 클라이언트는 hourlyForecast[0]이 "지금"이지만, mock 클라이언트는 0~23시 달력
-  // 순으로 채운다 — 인덱스에 의존하지 않고 현재 시각을 직접 찾아 그 시점부터 보여준다.
-  const nowHour = new Date().getHours()
-  const startIndex = data.hourlyForecast.findIndex((h) => h.hour === nowHour)
-  const from = startIndex === -1 ? 0 : startIndex
-  const preview = [...data.hourlyForecast.slice(from), ...data.hourlyForecast.slice(0, from)].slice(0, 7)
-  const topHours = new Set(data.bestRunningHours.slice(0, 2).map((h) => h.hour))
+  // hourlyForecast[0]이 "지금"이다 (실·mock 공통 계약). 예전에는 브라우저 시계로 현재
+  // 시각을 찾아 회전시켰는데, 기준 시각이 에어코리아 dataTime이라 보통 index 1에 맞아
+  // 미리보기가 "지금" 바를 빼고 한 시간 뒤부터 시작했다.
+  const preview = data.hourlyForecast.slice(0, 7)
+  // bestRunningHours는 점수 내림차순이므로 앞의 2개가 실제 상위 2개다.
+  // hour만 비교하면 내일 6시가 오늘 6시 막대를 강조하므로 isNextDay까지 함께 본다.
+  const topKeys = new Set(data.bestRunningHours.slice(0, 2).map((h) => `${h.hour}-${h.isNextDay}`))
 
   return (
     <Link
@@ -119,7 +130,7 @@ function TimelinePreview({ data }: { data: AirQualityData }) {
       </div>
       <div className="flex items-end gap-1.5 h-14">
         {preview.map((p) => {
-          const active = topHours.has(p.hour);
+          const active = topKeys.has(`${p.hour}-${!!p.isNextDay}`);
           const height = Math.max(16, Math.round((p.runningIndex.score / 100) * 56))
           return (
             <div key={`${p.hour}-${p.isNextDay ?? false}`} className="flex-1 flex flex-col items-center gap-1.5">

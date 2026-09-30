@@ -6,10 +6,19 @@ interface RunningIndexCardProps {
   updatedAt: Date;
 }
 
+/**
+ * 기준 시각 라벨 — 항상 KST로 표시한다.
+ *
+ * `updatedAt`은 백엔드가 에어코리아 dataTime(KST)에 고정한 값인데, `getHours()`는 단말
+ * 타임존으로 렌더한다. 해외에서 접속하면 카드가 실제 측정 시각과 다른 시각을 주장했다.
+ * 국내 대기질 서비스이므로 표시 기준은 KST로 못 박는다.
+ */
 function hourLabel(date: Date): string {
-  const hour = date.getHours();
-  const period = hour < 12 ? '오전' : '오후';
-  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+  const kstHour = Number(
+    new Intl.DateTimeFormat('ko-KR', { hour: 'numeric', hour12: false, timeZone: 'Asia/Seoul' }).format(date)
+  ) % 24;
+  const period = kstHour < 12 ? '오전' : '오후';
+  const hour12 = kstHour % 12 === 0 ? 12 : kstHour % 12;
   return `${period} ${hour12}시`;
 }
 

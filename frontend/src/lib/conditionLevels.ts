@@ -28,8 +28,12 @@ export function pm10Level(value: number | null): ConditionLevel {
 
 // `o3Ppm` in ppm (raw AirQualityMetrics.o3 unit) — converted to ppb internally
 // to match AirQualityDetails' displayed breakpoints.
+//
+// warnMax was 90, which put 61~90 ppb in '보통' here while AirQualityDetails showed the
+// same reading as '나쁨' — the two panels contradicted each other on the same number.
+// running-index-algorithm.md's O3 table ends 민감군주의 at 60 ppb, so warn ends at 60.
 export function o3Level(o3Ppm: number | null): ConditionLevel {
-  return levelFrom(o3Ppm == null ? null : Math.round(o3Ppm * 1000), 30, 90)
+  return levelFrom(o3Ppm == null ? null : Math.round(o3Ppm * 1000), 30, 60)
 }
 
 export function tempLevel(temperature: number): ConditionLevel {

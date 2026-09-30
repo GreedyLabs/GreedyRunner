@@ -36,7 +36,7 @@ export function HoursPage({ data, selectedHour, onHourSelect }: HoursPageProps) 
             <HourlyForecast
               forecast={data.hourlyForecast}
               bestHours={data.bestRunningHours}
-              selectedHour={selectedHour?.hour ?? null}
+              selectedHour={selectedHour}
               onHourSelect={onHourSelect}
             />
           </div>

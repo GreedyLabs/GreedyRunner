@@ -57,13 +57,12 @@ function App() {
   }
 
   const data = airQuality.data
-  // 실제 클라이언트는 hourlyForecast[0]이 항상 current와 동일하지만, mock 클라이언트는
-  // hourlyForecast를 "지금부터"가 아니라 0~23시 달력 순으로 채운다(둘의 계약이 다름) —
-  // 그래서 인덱스에 의존하지 않고 data.current + 실제 현재 시각으로 직접 합성한다.
-  const currentAsHourly: HourlyForecastType | null = data
-    ? { hour: new Date().getHours(), airQuality: data.current.airQuality, weather: data.current.weather, runningIndex: data.current.runningIndex }
-    : null
-  const displayHour: HourlyForecastType | null = selectedHour ?? currentAsHourly
+  // hourlyForecast[0]은 실·mock 양쪽에서 "현재 시각" 바이고 current와 같은 값을 담는다
+  // (mockAirQualityClient가 같은 계약을 지키도록 맞췄다).
+  // 예전에는 브라우저 시계로 hour를 합성했는데, 기준 시각은 백엔드가 에어코리아 dataTime에
+  // 고정해 두었으므로 두 값이 최대 한 시간 어긋났다 — 카드는 "오후 2시", 준비물·팁은
+  // 오후 3시 기준으로 계산되는 상태가 됐다.
+  const displayHour: HourlyForecastType | null = selectedHour ?? data?.hourlyForecast[0] ?? null
 
   return (
     <MainLayout regionName={data?.regionName ?? location.region?.shortName ?? null}>
