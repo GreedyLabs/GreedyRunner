@@ -15,7 +15,8 @@ import type {
   WeatherInfo,
 } from '../../domain/entities/airQuality';
 import type { Region } from '../../domain/entities/region';
-import { BEST_HOUR_MIN_SCORE, getRunningIndex } from '../../domain/useCases/getRunningIndex';
+import { getRunningIndex } from '../../domain/useCases/getRunningIndex';
+import { buildHourlyForecast, selectBestRunningHours } from '../../domain/useCases/buildForecast';
 import { getCurrentWeather, getHourlyWeather, kstDateKey, type HourlyWeatherMap } from './weatherClient';
 import { getUVIndex, type UVData } from './uvIndexClient';
 import { assertOpenApiOk, fetchOpenApi, UpstreamApiError } from './openApiResponse';
@@ -597,67 +598,26 @@ function buildAirQualityData(
   const currentWx = currentWeather ? toWeatherInfo(currentWeather, currentUV) : undefined;
   const currentRunningIndex = getRunningIndex(currentMetrics, currentWx, currentHour);
 
-  // 현재 시각부터 +24시간 예보
-  // 모든 바가 미래(또는 현재)이므로 과거 폴백 문제가 없다.
-  // 단기예보(hourlyWeather)는 발표 시각 이후 데이터를 포함하므로
-  // 거의 모든 바에 실제 기상 데이터가 존재한다.
-  const hourlyForecast = Array.from({ length: 24 }, (_, i) => {
-    const rawHour = currentHour + i;
-    const hour = rawHour % 24;
-    const isNextDay = rawHour >= 24;
-
-    // 현재 시각 바(i===0): 카드 칩과 100% 동일한 값 재사용
-    if (i === 0) {
-      return {
-        hour,
-        isNextDay: undefined,
-        airQuality: currentMetrics,
-        weather: currentWx,
-        runningIndex: currentRunningIndex,
-      };
-    }
-
-    // 대기질: 미래이므로 항상 예측
-    const metrics = predictMetrics(currentMetrics, hour);
-
-    // UV — 3시간 간격 발표값 사이는 uvIndexClient가 보간해 채워 두었다.
-    // 그래도 없으면 현재값으로 폴백하되, 없는 것을 0으로 만들지는 않는다.
-    const hourUV = uvData?.hourly.get(hour) ?? currentUV;
-
-    // 기상: 이 바의 실제 KST 날짜로 조회한다.
-    // 기준 시각(updatedAt)은 에어코리아 dataTime이고 예보 맵은 기상청 날짜 키이므로,
-    // '오늘/내일'이 아니라 날짜 문자열로 맞춰야 자정 전후에 하루가 어긋나지 않는다.
-    const barInstant = new Date(updatedAt.getTime() + i * 3_600_000);
-    const wx = hourlyWeather?.get(kstDateKey(barInstant))?.get(hour);
-    const weatherInfo = wx ? toWeatherInfo(wx, hourUV) : currentWx;
-
-    return {
-      hour,
-      isNextDay: isNextDay || undefined,
-      airQuality: metrics,
-      weather: weatherInfo,
-      runningIndex: getRunningIndex(metrics, weatherInfo, hour),
-    };
+  // 지금부터 +24시간 예보. 바 목록 조립과 최적 시간 선정은 domain이 소유한다
+  // (mock 클라이언트도 같은 함수를 부르므로 두 경로의 계약이 구조적으로 일치한다).
+  const hourlyForecast = buildHourlyForecast({
+    currentHour,
+    currentMetrics,
+    currentWeather: currentWx,
+    currentRunningIndex,
+    weatherAt: (i, hour) => {
+      // 이 바의 실제 KST 날짜로 조회한다.
+      // 기준 시각(updatedAt)은 에어코리아 dataTime이고 예보 맵은 기상청 날짜 키이므로,
+      // '오늘/내일'이 아니라 날짜 문자열로 맞춰야 자정 전후에 하루가 어긋나지 않는다.
+      const barInstant = new Date(updatedAt.getTime() + i * 3_600_000);
+      const wx = hourlyWeather?.get(kstDateKey(barInstant))?.get(hour);
+      // UV — 3시간 간격 발표값 사이는 uvIndexClient가 보간해 채워 두었다.
+      const hourUV = uvData?.hourly.get(hour) ?? currentUV;
+      return wx ? toWeatherInfo(wx, hourUV) : undefined;
+    },
   });
 
-  // 최적 시간 — **점수 내림차순**으로 상위 3개. 순서가 계약이다.
-  // 프론트엔드는 이 배열을 순위로 읽는다(헤드라인은 [0], 목록은 1·2·3위, 홈 미리보기는 상위 2개
-  // 강조). 예전에는 점수로 고른 뒤 시각 오름차순으로 다시 정렬해 내려보내서, 세 화면 모두
-  // "가장 좋은 시간" 자리에 가장 이른 시간을 보여 주고 있었다.
-  //
-  // 오늘 안에서 먼저 채우고 모자랄 때만 내일로 넘어간다. 예전의 `currentHour >= 22` 규칙은
-  // 21시에 오늘 후보가 2개(22·23시)뿐인데도 내일을 막아 추천이 사실상 사라지는 절벽이 있었다.
-  const candidates = hourlyForecast
-    .slice(1) // i===0은 "지금" 바이므로 추천에서 제외
-    .filter((h) => h.runningIndex.score >= BEST_HOUR_MIN_SCORE);
-  const byScore = (a: typeof candidates[number], b: typeof candidates[number]) =>
-    b.runningIndex.score - a.runningIndex.score;
-  const bestRunningHours = [
-    ...candidates.filter((h) => !h.isNextDay).sort(byScore),
-    ...candidates.filter((h) => h.isNextDay).sort(byScore),
-  ]
-    .slice(0, 3)
-    .map((h) => ({ hour: h.hour, isNextDay: !!h.isNextDay }));
+  const bestRunningHours = selectBestRunningHours(hourlyForecast);
 
   return {
     regionName: fallback ? `${fallback.fallbackStation} 측정소` : `${stationName} 측정소`,
@@ -722,30 +682,4 @@ function defaultMetrics(): AirQualityMetrics {
   return { pm25: null, pm10: null, o3: null, no2: null, co: null };
 }
 
-/**
- * base 값이 null이면 예측값도 null(측정 불가) — 0으로 조작하지 않는다.
- *
- * 배수는 문서의 '시간대 패턴' 표(출퇴근 ×1.4, 새벽 ×0.6, 그 외 ×1.0)를 따르되,
- * **O₃만 출퇴근에 ×1.2**를 쓴다. 지표면 O₃는 교통량이 늘면 오히려 NO 적정
- * (NO + O₃ → NO₂)으로 소모되어 미세먼지처럼 함께 치솟지 않으므로, 같은 ×1.4를
- * 적용하면 출퇴근 시간대를 과대 감점한다. (문서에도 이 예외를 적어 두었다)
- */
-function predictMetrics(base: AirQualityMetrics, hour: number): AirQualityMetrics {
-  const factor = isRushHour(hour) ? 1.4 : isEarlyMorning(hour) ? 0.6 : 1.0;
-  const scale = (v: number | null, f: number, decimals: number) =>
-    v == null ? null : parseFloat((v * f).toFixed(decimals));
-  return {
-    pm25: scale(base.pm25, factor, 1),
-    pm10: scale(base.pm10, factor, 1),
-    o3:   scale(base.o3,   isRushHour(hour) ? 1.2 : factor, 3),
-    no2:  scale(base.no2,  factor, 3),
-    co:   scale(base.co,   factor, 2),
-  };
-}
 
-function isRushHour(h: number) {
-  return (h >= 7 && h <= 9) || (h >= 17 && h <= 19);
-}
-function isEarlyMorning(h: number) {
-  return h >= 3 && h <= 6;
-}

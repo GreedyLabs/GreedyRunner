@@ -14,7 +14,8 @@
  */
 import type { AirQualityData, AirQualityMetrics } from '../../domain/entities/airQuality'
 import type { Region } from '../../domain/entities/region'
-import { BEST_HOUR_MIN_SCORE, getRunningIndex } from '../../domain/useCases/getRunningIndex'
+import { getRunningIndex } from '../../domain/useCases/getRunningIndex'
+import { buildHourlyForecast, selectBestRunningHours } from '../../domain/useCases/buildForecast'
 
 interface MockRegion extends Region {
   /** [pm25, pm10] 기준 농도 */
@@ -80,33 +81,15 @@ export async function getAirQuality(regionId: string, _lat?: number, _lng?: numb
   const currentAirQuality = makeMetrics(region, currentHour)
   const currentRunningIndex = getRunningIndex(currentAirQuality, undefined, currentHour)
 
-  // 실 클라이언트와 같이 "지금부터 24시간". index 0이 현재 시각이다.
-  const hourlyForecast = Array.from({ length: 24 }, (_, i) => {
-    const rawHour = currentHour + i
-    const hour = rawHour % 24
-    const isNextDay = rawHour >= 24
-    if (i === 0) {
-      return { hour, isNextDay: undefined, airQuality: currentAirQuality, runningIndex: currentRunningIndex }
-    }
-    const airQuality = makeMetrics(region, hour)
-    return {
-      hour,
-      isNextDay: isNextDay || undefined,
-      airQuality,
-      runningIndex: getRunningIndex(airQuality, undefined, hour),
-    }
+  // 실 클라이언트와 **같은 domain 함수**를 쓴다 — 계약 일치가 규칙이 아니라 구조다.
+  // (지금부터 24시간, index 0 = 현재, 점수 내림차순 상위 3개, 오늘 먼저 채우기)
+  const hourlyForecast = buildHourlyForecast({
+    currentHour,
+    currentMetrics: currentAirQuality,
+    currentRunningIndex,
   })
 
-  // 실 클라이언트와 같은 계약: 점수 내림차순 상위 3개, 오늘 먼저 채우고 모자라면 내일.
-  const candidates = hourlyForecast.slice(1).filter((h) => h.runningIndex.score >= BEST_HOUR_MIN_SCORE)
-  const byScore = (a: (typeof candidates)[number], b: (typeof candidates)[number]) =>
-    b.runningIndex.score - a.runningIndex.score
-  const bestRunningHours = [
-    ...candidates.filter((h) => !h.isNextDay).sort(byScore),
-    ...candidates.filter((h) => h.isNextDay).sort(byScore),
-  ]
-    .slice(0, 3)
-    .map((h) => ({ hour: h.hour, isNextDay: !!h.isNextDay }))
+  const bestRunningHours = selectBestRunningHours(hourlyForecast)
 
   return {
     regionName: region.name,
@@ -134,23 +117,23 @@ function noise(seed: string): number {
   return ((h >>> 0) % 10000) / 10000
 }
 
+/**
+ * 현재 시각의 "실측값"을 흉내낸다.
+ *
+ * 시간대 패턴 배수를 여기서 적용하지 **않는다.** 실 클라이언트의 현재값은 에어코리아가 준
+ * 가공되지 않은 측정값이고, 미래 바의 배수는 domain의 `predictMetrics`가 한 번만 적용한다.
+ * 여기서 배수를 또 걸면 mock의 미래 바가 배수를 두 번 먹어 실 경로와 달라진다.
+ */
 function makeMetrics(region: MockRegion, hour: number): AirQualityMetrics {
   const [pm25Base, pm10Base] = region.base
-  const factor = isRushHour(hour) ? 1.4 : isEarlyMorning(hour) ? 0.6 : 1.0
   const jitter = (base: number, range: number, key: string) =>
     Math.max(0, Math.round((base + (noise(`${region.id}:${hour}:${key}`) - 0.5) * 2 * range) * 10) / 10)
   return {
-    pm25: jitter(pm25Base * factor, pm25Base * 0.12, 'pm25'),
-    pm10: jitter(pm10Base * factor, pm10Base * 0.12, 'pm10'),
+    pm25: jitter(pm25Base, pm25Base * 0.12, 'pm25'),
+    pm10: jitter(pm10Base, pm10Base * 0.12, 'pm10'),
     o3: parseFloat((noise(`${region.id}:${hour}:o3`) * 0.06 + 0.01).toFixed(3)),
     no2: parseFloat((noise(`${region.id}:${hour}:no2`) * 0.03 + 0.005).toFixed(3)),
     co: parseFloat((noise(`${region.id}:${hour}:co`) * 0.8 + 0.2).toFixed(2)),
   }
 }
 
-function isRushHour(h: number) {
-  return (h >= 7 && h <= 9) || (h >= 17 && h <= 19)
-}
-function isEarlyMorning(h: number) {
-  return h >= 3 && h <= 6
-}

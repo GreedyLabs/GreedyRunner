@@ -1,4 +1,8 @@
+import type { PrecipitationType } from './weather'
+
 export type RunningStatus = 'great' | 'good' | 'caution' | 'bad' | 'worst' | 'unknown'
+
+export type { PrecipitationType }
 
 /**
  * 측정값은 `null`이 "측정소 점검/결측"을 의미한다.
@@ -25,7 +29,7 @@ export interface WeatherInfo {
   temperature: number          // 기온 (°C)
   humidity: number             // 습도 (%)
   windSpeed: number            // 풍속 (m/s)
-  precipitation: 'none' | 'rain' | 'snow' | 'sleet'
+  precipitation: PrecipitationType
   uvIndex?: number             // 자외선지수 (0~15+, 없으면 undefined)
 }
 
