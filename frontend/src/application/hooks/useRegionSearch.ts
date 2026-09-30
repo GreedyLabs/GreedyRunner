@@ -32,11 +32,11 @@ export function useRegionSearch(): UseRegionSearchReturn {
    * 될 때도 있고 안 될 때도 있다"로 보였다.
    */
   const latestRequestRef = useRef(0)
-  const mountedRef = useRef(true)
 
+  // 언마운트 가드(mountedRef)를 두지 않는 이유는 useLocation의 같은 주석을 참고.
+  // 요약: StrictMode의 mount → unmount → mount에서 영구히 false가 되어 응답을 버린다.
   useEffect(() => {
     return () => {
-      mountedRef.current = false
       if (debounceRef.current) clearTimeout(debounceRef.current)
       abortRef.current?.abort()
     }
@@ -68,18 +68,18 @@ export function useRegionSearch(): UseRegionSearchReturn {
       try {
         const found = await searchRegions(q, { signal: controller.signal })
         // 더 최신 요청이 이미 나갔으면 이 응답은 버린다.
-        if (requestId !== latestRequestRef.current || !mountedRef.current) return
+        if (requestId !== latestRequestRef.current) return
         setResults(found)
         setError(null)
       } catch (err) {
         if (err instanceof RequestCancelledError) return
-        if (requestId !== latestRequestRef.current || !mountedRef.current) return
+        if (requestId !== latestRequestRef.current) return
         // 예전에는 catch가 아예 없어 실패가 unhandled rejection으로 사라지고, 드롭다운은
         // 조용히 닫히기만 했다. 사용자는 "결과가 없는 것"과 "검색이 실패한 것"을 구분할 수 없었다.
         setResults([])
         setError(err instanceof Error ? err.message : '지역 검색에 실패했어요. 잠시 후 다시 시도해 주세요.')
       } finally {
-        if (requestId === latestRequestRef.current && mountedRef.current) setIsSearching(false)
+        if (requestId === latestRequestRef.current) setIsSearching(false)
       }
     }, DEBOUNCE_MS)
   }, [])

@@ -74,11 +74,11 @@ export function useAirQuality(): UseAirQualityReturn {
    */
   const latestRequestRef = useRef(0)
   const abortRef = useRef<AbortController | null>(null)
-  const mountedRef = useRef(true)
 
+  // 언마운트 가드(mountedRef)를 두지 않는 이유는 useLocation의 같은 주석을 참고.
+  // 요약: StrictMode의 mount → unmount → mount에서 영구히 false가 되어 응답을 버린다.
   useEffect(() => {
     return () => {
-      mountedRef.current = false
       abortRef.current?.abort()
     }
   }, [])
@@ -101,12 +101,12 @@ export function useAirQuality(): UseAirQualityReturn {
     setState(prev => ({ ...prev, isLoading: true, error: null }))
     try {
       const data = await getAirQualityByRegion(regionId, lat, lng, { signal: controller.signal })
-      if (requestId !== latestRequestRef.current || !mountedRef.current) return
+      if (requestId !== latestRequestRef.current) return
       writeCache(cacheKey, data)
       setState({ data, isLoading: false, error: null })
     } catch (err) {
       if (err instanceof RequestCancelledError) return
-      if (requestId !== latestRequestRef.current || !mountedRef.current) return
+      if (requestId !== latestRequestRef.current) return
       // 실패 시 이전 지역의 데이터를 남기지 않는다. 예전에는 `...prev`로 data를 유지해서
       // 오류 배너와 (다른 지역의) 완성된 대시보드가 동시에 표시됐고, 사용자는 화면에 보이는
       // 점수가 어느 지역 것인지 알 수 없었다.

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import type { Region } from '../../domain/entities/region.types'
 import { getRegionByCoords } from '../../infrastructure/api/airQualityApi'
 
@@ -96,13 +96,17 @@ export function useLocation(): UseLocationReturn {
     error: null,
   }))
 
-  const mountedRef = useRef(true)
-  useEffect(() => {
-    return () => {
-      mountedRef.current = false
-    }
-  }, [])
-
+  /**
+   * 언마운트 가드를 두지 않는다.
+   *
+   * `useRef(true)` + cleanup에서 false로 내리는 패턴은 StrictMode에서 영구히 false가 된다:
+   * React 18 StrictMode는 개발 모드에서 이펙트를 mount → unmount → mount로 실행하는데,
+   * cleanup이 false로 내린 뒤 재마운트 이펙트 본문이 true로 되돌리지 않기 때문이다.
+   * 그러면 위치 조회 응답이 와도 setState가 건너뛰어져 화면이 영구히 빈 채로 남는다.
+   *
+   * React 18부터 언마운트된 컴포넌트의 setState는 경고 없이 무시되므로 가드 자체가 필요 없다.
+   * 늦게 온 응답이 화면을 덮는 문제는 요청 시퀀스 가드와 AbortController가 막는다.
+   */
   const locate = useCallback((skipCache: boolean) => {
     if (!skipCache && getCached()) {
       // 초기 state가 이미 캐시된 지역을 담고 있다. setState를 하지 않아 참조가 유지된다.
@@ -112,7 +116,6 @@ export function useLocation(): UseLocationReturn {
     // 위치를 확정하지 못하면 폴백 지역으로 대체해 화면이 비지 않게 한다.
     // 캐시는 남기지 않아 다음 접속 때 실제 위치를 다시 시도한다.
     const applyFallback = (message: string) => {
-      if (!mountedRef.current) return
       setState({ region: FALLBACK_REGION, isLocating: false, error: message })
     }
 
@@ -128,7 +131,6 @@ export function useLocation(): UseLocationReturn {
         try {
           const region = await getRegionByCoords(coords.latitude, coords.longitude)
           setCache(region)
-          if (!mountedRef.current) return
           setState({ region, isLocating: false, error: null })
         } catch {
           applyFallback('측정소 조회에 실패해 서울 도심 기준으로 표시 중이에요. 지역을 직접 검색할 수 있어요.')

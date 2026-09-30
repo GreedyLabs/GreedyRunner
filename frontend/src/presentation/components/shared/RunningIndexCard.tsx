@@ -14,9 +14,18 @@ interface RunningIndexCardProps {
  * 국내 대기질 서비스이므로 표시 기준은 KST로 못 박는다.
  */
 function hourLabel(date: Date): string {
-  const kstHour = Number(
-    new Intl.DateTimeFormat('ko-KR', { hour: 'numeric', hour12: false, timeZone: 'Asia/Seoul' }).format(date)
-  ) % 24;
+  // formatToParts로 시(hour) 부분만 꺼낸다.
+  // format()의 문자열을 Number()에 넣으면 안 된다 — 'ko-KR'은 "14시"처럼 접미사를 붙이므로
+  // Number("14시")가 NaN이 되어 "오후 NaN시"가 표시된다.
+  const hourPart = new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric',
+    hour12: false,
+    timeZone: 'Asia/Seoul',
+  })
+    .formatToParts(date)
+    .find((part) => part.type === 'hour')?.value;
+  // hour12:false는 자정을 '24'로 내는 구현이 있어 24를 0으로 정규화한다.
+  const kstHour = (Number(hourPart ?? '0') || 0) % 24;
   const period = kstHour < 12 ? '오전' : '오후';
   const hour12 = kstHour % 12 === 0 ? 12 : kstHour % 12;
   return `${period} ${hour12}시`;
