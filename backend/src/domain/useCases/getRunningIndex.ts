@@ -18,6 +18,15 @@ const STATUS_MESSAGES: Record<RunningStatus, string> = {
   unknown: '측정소 점검 등으로 대기질 데이터를 가져올 수 없습니다.',
 }
 
+/**
+ * 최적 시간 추천에 포함되는 최소 점수 — 'good'(달리기 좋음) 진입선과 같다.
+ *
+ * running-index-algorithm.md와 README가 모두 60점이라고 적고 있는데 코드는 65를 쓰고 있었다.
+ * 두 클라이언트(실·mock)에 각각 하드코딩돼 있어 한쪽만 고치면 로컬과 운영의 추천 기준이
+ * 갈리므로, 점수 → 상태 매핑을 소유한 이 모듈에서 한 번만 정의한다.
+ */
+export const BEST_HOUR_MIN_SCORE = 60
+
 const UNKNOWN_RUNNING_INDEX: RunningIndex = {
   score: 0,
   status: 'unknown',

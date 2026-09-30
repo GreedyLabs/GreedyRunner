@@ -12,20 +12,13 @@
  */
 
 import { latLngToAreaNo } from './areaNoLookup';
+import { assertOpenApiOk, fetchOpenApi, UpstreamApiError } from './openApiResponse';
 
 // 공공데이터포털 서비스키 — 에어코리아와 동일한 포털 키 사용
 const API_KEY = process.env.AIR_KOREA_API_KEY ?? '';
 const BASE_URL = 'https://apis.data.go.kr/1360000/LivingWthrIdxServiceV5';
 
-async function fetchWithTimeout(url: string, timeoutMs = 4000): Promise<Response> {
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), timeoutMs)
-  try {
-    return await fetch(url, { signal: controller.signal })
-  } finally {
-    clearTimeout(timer)
-  }
-}
+const UV_TIMEOUT_MS = 4000;
 
 // ── KST 유틸 ────────────────────────────────────────────────
 
@@ -41,10 +34,17 @@ function formatDate(d: Date): string {
 
 /**
  * UV 발표 기준 시각 — 06시 또는 18시.
- * 현재 시각이 06시 미만이면 전날 18시 데이터를 사용한다.
+ *
+ * `back`은 몇 발표분 이전을 볼지 지정한다. 발표는 06:00·18:00 정각이 아니라 몇 분 뒤에
+ * 올라오므로, 06:0x·18:0x에 접속하면 방금 지난 발표분이 아직 없어 NODATA가 온다.
+ * 다른 두 클라이언트와 달리 여기에는 지연 여유가 없어 그 창에서 UV가 통째로 빠졌다
+ * — UV 가중치(5%)와 UV 점수 상한이 사라져 한낮 점수가 부풀려진다.
  */
-function getUVBaseTime(): string {
+function getUVBaseTime(back = 0): string {
   const kst = nowKST();
+  // 06시/18시 발표를 하나의 축으로 세어 back 발표분 이전으로 내린다.
+  // (하루 2회 발표이므로 back 1 = 12시간 전)
+  kst.setHours(kst.getHours() - back * 12);
   const h = kst.getHours();
 
   if (h >= 18) {
@@ -60,12 +60,13 @@ function getUVBaseTime(): string {
 
 // ── API 응답 타입 ────────────────────────────────────────────
 
+/** airKorea 쪽과 같은 이유로 모든 단계를 옵셔널로 둔다 (openApiResponse.ts 참고). */
 interface UVResponse {
-  response: {
-    header: { resultCode: string; resultMsg: string };
-    body: {
-      items: {
-        item: Array<{
+  response?: {
+    header?: { resultCode?: string; resultMsg?: string };
+    body?: {
+      items?: {
+        item?: Array<{
           code: string;
           areaNo: string;
           date: string;
@@ -87,23 +88,38 @@ interface UVResponse {
 // ── API 호출 ─────────────────────────────────────────────────
 
 async function fetchUVIndex(areaNo: string): Promise<Map<number, number>> {
-  const time = getUVBaseTime();
-  const url = new URL(`${BASE_URL}/getUVIdxV5`);
-  url.searchParams.set('serviceKey', API_KEY);
-  url.searchParams.set('dataType', 'JSON');
-  url.searchParams.set('areaNo', areaNo);
-  url.searchParams.set('time', time);
-  url.searchParams.set('numOfRows', '10');
-  url.searchParams.set('pageNo', '1');
+  let time = getUVBaseTime();
+  let json: UVResponse | null = null;
 
-  const res = await fetchWithTimeout(url.toString());
-  if (!res.ok) throw new Error(`UV API HTTP ${res.status}`);
-  const json = (await res.json()) as UVResponse;
+  // 발표 지연 구간(06:0x·18:0x)에서는 직전 발표분으로 한 번 더 시도한다.
+  for (let back = 0; back <= 1; back++) {
+    time = getUVBaseTime(back);
+    const url = new URL(`${BASE_URL}/getUVIdxV5`);
+    url.searchParams.set('serviceKey', API_KEY);
+    url.searchParams.set('dataType', 'JSON');
+    url.searchParams.set('areaNo', areaNo);
+    url.searchParams.set('time', time);
+    url.searchParams.set('numOfRows', '10');
+    url.searchParams.set('pageNo', '1');
 
-  const { resultCode, resultMsg } = json.response.header;
-  if (resultCode !== '00') throw new Error(`UV API 오류: ${resultMsg}`);
+    try {
+      const body = await fetchOpenApi<UVResponse>(url.toString(), {
+        endpoint: 'getUVIdxV5',
+        timeoutMs: UV_TIMEOUT_MS,
+      });
+      assertOpenApiOk(body, 'getUVIdxV5');
+      json = body;
+      break;
+    } catch (err) {
+      if (back === 0 && err instanceof UpstreamApiError && err.kind === 'nodata') {
+        console.warn('[getUVIdxV5] 해당 발표 시각 자료 없음 — 이전 발표분으로 재시도');
+        continue;
+      }
+      throw err;
+    }
+  }
 
-  const items = json.response.body.items?.item ?? [];
+  const items = json?.response?.body?.items?.item ?? [];
   if (items.length === 0) return new Map();
 
   const item = items[0];
@@ -116,14 +132,26 @@ async function fetchUVIndex(areaNo: string): Promise<Map<number, number>> {
     // h24는 (baseHour + 24) % 24 = baseHour 로 h0와 같은 키가 되어 당일 값을 덮어쓰므로 제외
   ];
 
+  // 발표값은 3시간 간격이므로 그대로 두면 24개 예보 바 중 3분의 2가 UV를 못 받는다.
+  // 그 빈 시각은 호출부에서 "현재 UV"로 폴백됐는데, 새벽에 조회하면 한낮 바까지 현재값(0)을
+  // 쓰게 되어 UV 페널티와 UV 점수 상한이 통째로 사라졌다. → 앵커 사이를 선형 보간해 채운다.
+  const anchors: Array<{ offset: number; uv: number }> = [];
   for (const [key, offset] of offsets) {
     const val = item[key as keyof typeof item];
-    if (val != null && val !== '') {
-      const uv = parseInt(String(val), 10);
-      if (!isNaN(uv)) {
-        const hour = (baseHour + offset) % 24;
-        result.set(hour, uv);
-      }
+    if (val == null || val === '') continue;
+    const uv = parseInt(String(val), 10);
+    if (!isNaN(uv)) anchors.push({ offset, uv });
+  }
+
+  for (let i = 0; i < anchors.length; i++) {
+    const a = anchors[i];
+    result.set((baseHour + a.offset) % 24, a.uv);
+    const b = anchors[i + 1];
+    if (!b) continue;
+    const span = b.offset - a.offset;
+    for (let t = a.offset + 1; t < b.offset; t++) {
+      const uv = a.uv + ((b.uv - a.uv) * (t - a.offset)) / span;
+      result.set((baseHour + t) % 24, Math.round(uv));
     }
   }
 
@@ -133,8 +161,13 @@ async function fetchUVIndex(areaNo: string): Promise<Map<number, number>> {
 // ── 공개 함수 ────────────────────────────────────────────────
 
 export interface UVData {
-  /** 현재 시각 기준 UV 지수 (가장 가까운 3시간 단위) */
-  current: number;
+  /**
+   * 현재 시각 기준 UV 지수. 발표값이 하나도 없으면 `undefined`.
+   * 예전에는 0으로 채웠는데, 0은 "자외선 낮음"이라는 실제 값이어서 UV 가중치 분기(기온·습도에서
+   * 5%를 떼어 UV에 배분)가 없는 데이터로 활성화되고 UI에는 'UV 낮음'이 표시됐다.
+   * 결측은 반드시 undefined로 전파해 상위 로직이 UV 없는 가중치를 쓰게 한다.
+   */
+  current?: number;
   /** 시간별 UV 지수 Map<hour(0~23), uvIndex> */
   hourly: Map<number, number>;
 }
@@ -162,7 +195,7 @@ export async function getUVIndex(lat: number, lng: number): Promise<UVData> {
   const kstHour = nowKST().getHours();
   const nearestHour = [...hourly.keys()]
     .sort((a, b) => circularHourDistance(a, kstHour) - circularHourDistance(b, kstHour))[0];
-  const current = nearestHour !== undefined ? (hourly.get(nearestHour) ?? 0) : 0;
+  const current = nearestHour !== undefined ? hourly.get(nearestHour) : undefined;
 
   return { current, hourly };
 }
