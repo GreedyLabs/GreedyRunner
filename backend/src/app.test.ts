@@ -1,5 +1,6 @@
 import request from 'supertest'
 import app from './app'
+import { swaggerDocument } from './swagger'
 
 // jest.setup.ts가 API 키를 비우므로 airQuality 라우트는 Mock 클라이언트를 사용한다.
 // 따라서 네트워크 없이 결정적으로 동작한다.
@@ -98,5 +99,65 @@ describe('GET /api/v1/air-quality/:regionId 좌표 유효성', () => {
   it('좌표를 아예 안 보내면 200 (좌표는 선택적)', async () => {
     const res = await request(app).get(`/api/v1/air-quality/${encodeURIComponent('station:강남구')}`)
     expect(res.status).toBe(200)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// swagger 문서와 실제 응답의 드리프트 감지.
+//
+// swagger.ts는 손으로 쓴 객체라 응답 타입이 바뀌어도 컴파일러가 잡아 주지 않는다.
+// 실제로 응답이 currentAirQuality/currentRunningIndex에서 current{}로 바뀐 뒤에도 문서는
+// 옛 필드를 그대로 설명하고 있었고, bestRunningHours도 정수 배열이라고 적혀 있었다.
+// 문서만 보고 붙인 클라이언트는 없는 필드를 읽게 된다.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('swagger 문서 ↔ 실제 응답', () => {
+  const GANGNAM = encodeURIComponent('station:강남구')
+
+  it('AirQualityResponse의 속성 집합이 실제 응답의 키와 일치한다', async () => {
+    const res = await request(app).get(`/api/v1/air-quality/${GANGNAM}`)
+    expect(res.status).toBe(200)
+
+    const documented = Object.keys(swaggerDocument.components.schemas.AirQualityResponse.properties)
+    const actual = Object.keys(res.body)
+
+    // 실제 응답의 모든 키가 문서에 있어야 한다 (문서 누락 감지)
+    expect(actual.filter((k) => !documented.includes(k))).toEqual([])
+    // 문서의 키 중 옵셔널이 아닌 것은 실제 응답에 있어야 한다.
+    // stationFallback·serviceStatus.weather는 조건부이므로 제외한다.
+    const optional = ['stationFallback']
+    expect(documented.filter((k) => !optional.includes(k) && !actual.includes(k))).toEqual([])
+  })
+
+  it('current·hourlyForecast·bestRunningHours의 구조가 문서와 일치한다', async () => {
+    const res = await request(app).get(`/api/v1/air-quality/${GANGNAM}`)
+    const schemas = swaggerDocument.components.schemas
+
+    expect(Object.keys(res.body.current).sort()).toEqual(
+      Object.keys(schemas.AirQualityResponse.properties.current.properties)
+        .filter((k) => k !== 'weather') // mock은 기상 데이터를 주지 않는다
+        .sort()
+    )
+
+    const bar = res.body.hourlyForecast[0]
+    const documentedBar = Object.keys(schemas.HourlyForecast.properties)
+    expect(Object.keys(bar).filter((k) => !documentedBar.includes(k))).toEqual([])
+
+    // bestRunningHours는 정수 배열이 아니라 객체 배열이다.
+    expect(schemas.AirQualityResponse.properties.bestRunningHours.items.$ref).toBe(
+      '#/components/schemas/BestRunningHour'
+    )
+    for (const best of res.body.bestRunningHours) {
+      expect(Object.keys(best).sort()).toEqual(['hour', 'isNextDay'])
+    }
+  })
+
+  it('문서화된 모든 경로가 실제로 라우팅된다', async () => {
+    const paths = Object.keys(swaggerDocument.paths)
+    expect(paths).toContain('/api/v1/stats/visitors')
+    for (const path of paths) {
+      if (path.includes('{')) continue // 경로 파라미터는 위 테스트가 다룬다
+      const res = await request(app).get(path === '/api/v1/air-quality/search' ? `${path}?q=강남` : path)
+      expect(res.status).not.toBe(404)
+    }
   })
 })

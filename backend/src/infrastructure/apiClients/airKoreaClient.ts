@@ -722,7 +722,14 @@ function defaultMetrics(): AirQualityMetrics {
   return { pm25: null, pm10: null, o3: null, no2: null, co: null };
 }
 
-/** base 값이 null이면 예측값도 null(측정 불가) — 0으로 조작하지 않는다 */
+/**
+ * base 값이 null이면 예측값도 null(측정 불가) — 0으로 조작하지 않는다.
+ *
+ * 배수는 문서의 '시간대 패턴' 표(출퇴근 ×1.4, 새벽 ×0.6, 그 외 ×1.0)를 따르되,
+ * **O₃만 출퇴근에 ×1.2**를 쓴다. 지표면 O₃는 교통량이 늘면 오히려 NO 적정
+ * (NO + O₃ → NO₂)으로 소모되어 미세먼지처럼 함께 치솟지 않으므로, 같은 ×1.4를
+ * 적용하면 출퇴근 시간대를 과대 감점한다. (문서에도 이 예외를 적어 두었다)
+ */
 function predictMetrics(base: AirQualityMetrics, hour: number): AirQualityMetrics {
   const factor = isRushHour(hour) ? 1.4 : isEarlyMorning(hour) ? 0.6 : 1.0;
   const scale = (v: number | null, f: number, decimals: number) =>
