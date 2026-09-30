@@ -121,9 +121,13 @@ function getCachedNearbyStations(tmX: number, tmY: number): NearbyStation[] | nu
 }
 
 // getAirQuality의 tm: 경로에서는 뒤에 getStationMeasurements가 직렬로 이어지므로
-// 총 예산을 지키기 위해 짧게(1.5s) 제한한다. 반면 /by-coords(getRegionByCoords)는
-// 뒤 호출이 없어 예산이 남으므로 호출부에서 더 관대한 값을 넘긴다 — 근접측정소 API가
-// 간헐적으로 느릴 때 1.5s에서 AbortError→504로 위치 조회가 통째로 실패하던 문제를 방지.
+// 짧게(1.5s) 제한한다. 반면 /by-coords(getRegionByCoords)는 뒤 호출이 없어
+// 호출부에서 더 관대한 값을 넘긴다 — 근접측정소 API가 간헐적으로 느릴 때 1.5s에서
+// AbortError→504로 위치 조회가 통째로 실패하던 문제를 방지.
+//
+// 요청 단위 데드라인은 없다. 각 호출의 타임아웃(재시도 1회 포함)이 쌓이므로 실제
+// 최악 예산은 /:regionId 9초(측정소 3s + 측정 6s), /search 12초다. 이 값이 사용자
+// 대기 시간의 상한은 아니고, 위에서 nginx(20s)와 프론트엔드 apiFetch(15s)가 함께 끊는다.
 async function getNearbyStations(
   tmX: number,
   tmY: number,
@@ -172,7 +176,8 @@ const TM_COORDS_EMPTY_TTL_MS = 10 * 60 * 1000; // 10분
 const tmCoordsCache = new Map<string, { items: TmCoordResult[]; expiresAt: number }>();
 
 // 검색은 사용자가 스피너를 보며 기다리는 흐름이라, 짧은 타임아웃으로 실패하는 것보다
-// 조금 더 기다려서라도 결과를 주는 편이 낫다 (재시도 1회 포함 최악 12s).
+// 조금 더 기다려서라도 결과를 주는 편이 낫다. 재시도 1회를 포함해 최악 12초이며,
+// 도시명 검색은 여러 갈래를 병렬로 돌리므로 합산되지 않는다.
 const TM_COORDS_TIMEOUT_MS = 6000;
 
 async function getTMCoords(query: string): Promise<TmCoordResult[]> {
@@ -231,7 +236,8 @@ async function getStationMeasurements(stationName: string): Promise<StationMeasu
   url.searchParams.set('dataTerm', 'DAILY');
   url.searchParams.set('ver', MEASUREMENT_VER);
 
-  // getNearbyStations(1.5s) 이후 직렬로 실행되므로 3s로 제한 — 총 4.5s 예산 내 완료.
+  // getNearbyStations 이후 직렬로 실행된다. 재시도 1회를 포함하면 이 호출만 최악 6초이고,
+  // 앞단(최악 3초)과 합쳐 /:regionId의 직렬 예산은 최악 9초다.
   const json = await fetchOpenApi<AirKoreaResponse<StationMeasurement>>(url.toString(), {
     endpoint: 'getMsrstnAcctoRltmMesureDnsty',
     timeoutMs: 3000,
@@ -372,8 +378,8 @@ export async function searchRegions(query: string): Promise<Region[]> {
 
 export async function getRegionByCoords(lat: number, lng: number): Promise<Region> {
   const { tmX, tmY } = latLngToTM(lat, lng);
-  // 단독 호출이라 직렬 예산 제약이 없다 — 검색(getTMCoords, 6s)과 비슷하게 관대한
-  // 타임아웃을 주어 upstream 지연으로 인한 간헐적 위치 조회 실패를 줄인다.
+  // 단독 호출이라 뒤에 직렬로 이어지는 호출이 없다 — 검색(getTMCoords, 6s)과 비슷하게
+  // 관대한 타임아웃을 주어 upstream 지연으로 인한 간헐적 위치 조회 실패를 줄인다.
   const stations = await getNearbyStations(tmX, tmY, 5000);
   if (stations.length === 0) throw new RegionNotFoundError('주변 측정소를 찾을 수 없습니다.');
 
