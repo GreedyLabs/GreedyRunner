@@ -73,13 +73,13 @@ export function HoursPage({ data, selectedHour, onHourSelect }: HoursPageProps) 
             <button
               type="button"
               onClick={() => navigate('/gear')}
-              className="w-full mt-[18px] flex items-center justify-between bg-accent rounded-2xl px-[18px] py-4"
+              className="w-full mt-[18px] flex items-center justify-between bg-accent-strong rounded-2xl px-[18px] py-4"
             >
-              <span className="flex items-center gap-2.5 text-white text-sm font-bold">
+              <span className="flex items-center gap-2.5 text-on-accent text-sm font-bold">
                 <Backpack className="w-[18px] h-[18px]" />
                 {hourLabel(ctaHour.hour, ctaHour.isNextDay)}에 뭘 입고 나갈까요
               </span>
-              <ArrowRight className="w-[18px] h-[18px] text-white" />
+              <ArrowRight className="w-[18px] h-[18px] text-on-accent" />
             </button>
           )}
         </>

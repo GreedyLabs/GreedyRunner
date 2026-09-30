@@ -174,15 +174,19 @@ export function RunnerAvatar({ weather }: RunnerAvatarProps) {
         )}
       </svg>
 
+      {/*
+        이 컴포넌트는 accent 표면(bg-accent-strong) 위에만 올라간다. 글자색을 white로
+        박아 두면 다크 모드에서 --on-accent가 거의 검정이 되어 배경과 구분되지 않는다.
+      */}
       <div className="min-w-0">
-        <p className="text-white/90 text-[11px] sm:text-xs font-bold">{label}</p>
+        <p className="text-on-accent text-[11px] sm:text-xs font-bold">{label}</p>
         {weather.precipitation !== 'none' && (
-          <p className="text-white/70 text-[10px] sm:text-[11px] mt-0.5">
+          <p className="text-on-accent/80 text-[10px] sm:text-[11px] mt-0.5">
             {weather.precipitation === 'rain' ? '☔ 방수 장비 권장' : '🧤 방한 + 방수 필수'}
           </p>
         )}
         {weather.temperature >= 28 && (
-          <p className="text-white/70 text-[10px] sm:text-[11px] mt-0.5">💧 수분 보충 필수</p>
+          <p className="text-on-accent/80 text-[10px] sm:text-[11px] mt-0.5">💧 수분 보충 필수</p>
         )}
       </div>
     </div>

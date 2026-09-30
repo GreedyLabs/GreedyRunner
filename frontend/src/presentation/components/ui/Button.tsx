@@ -21,7 +21,7 @@ export function Button({
 
   const variants = {
     primary:
-      'bg-accent text-white hover:opacity-90 active:scale-[0.98] focus:ring-accent',
+      'bg-accent-strong text-on-accent hover:opacity-90 active:scale-[0.98] focus:ring-accent',
     secondary:
       'bg-paper text-ink border border-line hover:opacity-80 active:scale-[0.98] focus:ring-line',
     ghost:

@@ -79,12 +79,12 @@ export function TipPage({ data, displayHour }: TipPageProps) {
         </>
       )}
 
-      <Link to="/tips" className="w-full mt-6 flex items-center justify-between bg-accent rounded-2xl px-[18px] py-4">
-        <span className="flex items-center gap-2.5 text-white text-sm font-bold">
+      <Link to="/tips" className="w-full mt-6 flex items-center justify-between bg-accent-strong rounded-2xl px-[18px] py-4">
+        <span className="flex items-center gap-2.5 text-on-accent text-sm font-bold">
           <List className="w-[18px] h-[18px]" />
           전체 러닝 팁 목록 보기
         </span>
-        <ArrowRight className="w-[18px] h-[18px] text-white" />
+        <ArrowRight className="w-[18px] h-[18px] text-on-accent" />
       </Link>
 
       <section className="mt-8 pt-6 border-t border-line">
