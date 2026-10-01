@@ -42,7 +42,18 @@ GreedyRunner/
   - 참고 구현: `useAirQuality.ts`, `useRegionSearch.ts`
 - **스타일링:** Tailwind CSS 3.x (`darkMode: 'class'`, 색은 `index.css`의 CSS 변수로만 정의)
 - **PWA:** vite-plugin-pwa (generateSW). 라우트는 빌드 시 프리렌더된다.
-- **테스트:** Vitest. 컴포넌트 테스트·e2e는 없다 (React Testing Library·Playwright 미설치)
+- **테스트:** Vitest + jsdom + React Testing Library. e2e는 없다 (Playwright 미설치).
+  - 순수 함수 테스트(`src/lib/*.test.ts`)와 훅 테스트(`src/application/hooks/*.test.tsx`)를 둔다.
+    컴포넌트 렌더링 테스트는 아직 없다.
+  - **훅을 새로 만들거나 고치면 StrictMode 테스트를 함께 넣는다.** `<StrictMode>`로 감싸
+    렌더하면 React가 이펙트를 mount → unmount → mount로 실행하는데, 그 경로에서만 드러나는
+    버그가 실제로 운영 화면을 비게 만든 적이 있다(언마운트 플래그가 재마운트에서 복구되지 않음).
+    순수 함수 테스트는 이 부류를 구조적으로 잡지 못한다.
+  - 훅 테스트 환경 주의: 캐시가 모듈 스코프에 있으므로 테스트 사이에 남는다. 같은 키를
+    재사용하지 말고 테스트마다 고유한 regionId를 쓴다.
+  - `src/test/setup.ts`가 RTL 정리와 `localStorage` 설치를 담당한다. Node 26이 자체
+    `localStorage` 전역을 getter로 노출하는데 `--localstorage-file` 없이는 `undefined`이고,
+    vitest의 jsdom 환경이 이미 존재하는 전역 키를 건너뛰므로 직접 넣어 줘야 한다.
 
 ### Backend (`backend/`)
 - **런타임:** Node.js + TypeScript

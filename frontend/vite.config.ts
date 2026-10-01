@@ -1,4 +1,6 @@
-import { defineConfig } from 'vite';
+// vitest/config의 defineConfig를 쓴다 — vite의 것은 `test` 옵션을 타입에 갖고 있지 않아
+// 타입 검사에서 "'test' does not exist in type 'UserConfigExport'"로 떨어진다.
+import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
@@ -111,6 +113,16 @@ export default defineConfig({
       },
     }),
   ],
+  test: {
+    // 훅 테스트가 DOM을 필요로 하므로 jsdom을 기본 환경으로 둔다.
+    // 파일 단위 `@vitest-environment` docblock보다 이 설정이 확실하다 — docblock은
+    // 조용히 무시될 수 있고, 그러면 테스트가 "localStorage가 undefined"로만 실패해
+    // 원인이 환경 설정인지 코드인지 구분되지 않는다.
+    environment: 'jsdom',
+    // RTL은 테스트 프레임워크의 afterEach가 전역으로 노출돼 있을 때만 자동 정리한다.
+    // 이 저장소는 vitest 심볼을 명시적으로 import하므로 setup에서 직접 등록한다.
+    setupFiles: ['./src/test/setup.ts'],
+  },
   server: {
     allowedHosts: ['localhost', 'filial-janett-intromittent.ngrok-free.dev'],
     proxy: {
