@@ -14,19 +14,28 @@ import { useAirQuality } from './useAirQuality'
 import type { AirQualityData } from '../../domain/entities/airQuality.types'
 
 // vi.mock은 호이스팅되므로 팩토리가 참조하는 값은 vi.hoisted 안에서 만든다.
-const { getAirQualityByRegion, RequestCancelledError } = vi.hoisted(() => {
+const { getAirQualityByRegion, RequestCancelledError, ApiUnreachableError } = vi.hoisted(() => {
   class RequestCancelledError extends Error {
     constructor() {
       super('요청이 취소되었습니다.')
       this.name = 'RequestCancelledError'
     }
   }
-  return { getAirQualityByRegion: vi.fn(), RequestCancelledError }
+  class ApiUnreachableError extends Error {
+    constructor(target: string) {
+      super(
+        `API 서버(${target})에 연결할 수 없습니다. 서버가 실행 중인지, VITE_API_BASE_URL이 올바른지 확인해 주세요.`
+      )
+      this.name = 'ApiUnreachableError'
+    }
+  }
+  return { getAirQualityByRegion: vi.fn(), RequestCancelledError, ApiUnreachableError }
 })
 
 vi.mock('../../infrastructure/api/airQualityApi', () => ({
   getAirQualityByRegion,
   RequestCancelledError,
+  ApiUnreachableError,
 }))
 
 function data(regionName: string, overrides: Partial<AirQualityData> = {}): AirQualityData {
@@ -211,5 +220,22 @@ describe('useAirQuality — 캐시', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+})
+
+describe('useAirQuality — 연결 불가', () => {
+  // fetch가 서버 미기동·주소 오류·CORS 차단을 모두 TypeError('Failed to fetch')로 던지는데,
+  // 그 문구를 그대로 띄우면 원인을 전혀 좁힐 수 없다. 실제로 VITE_API_BASE_URL이 다른
+  // 서비스의 포트를 가리키는 설정 오류를 이 문구만으로는 구분할 수 없었다.
+  it('연결 실패는 확인할 지점을 알려 주는 문구로 표시한다', async () => {
+    getAirQualityByRegion.mockRejectedValue(new ApiUnreachableError('http://localhost:8080'))
+
+    render(<Probe regionId={uniqueId('unreachable')} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('error').textContent).toContain('http://localhost:8080')
+    })
+    expect(screen.getByTestId('error').textContent).toContain('VITE_API_BASE_URL')
+    expect(screen.getByTestId('error').textContent).not.toContain('Failed to fetch')
   })
 })

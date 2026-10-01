@@ -31,6 +31,25 @@ export class RequestTimeoutError extends Error {
   }
 }
 
+/**
+ * API 서버에 연결 자체가 되지 않는 경우.
+ *
+ * fetch는 서버가 없거나, 주소가 틀렸거나, CORS에 막혔을 때 모두 `TypeError: Failed to fetch`를
+ * 던진다. 그대로 화면에 띄우면 "Failed to fetch" 한 줄만 남아 사용자도 개발자도 원인을
+ * 좁힐 수 없다 — 실제로 VITE_API_BASE_URL이 다른 서비스의 포트를 가리키는 설정 오류를
+ * 이 문구만으로는 구분할 수 없었다. 어디로 호출했는지와 확인할 지점을 함께 적는다.
+ */
+export class ApiUnreachableError extends Error {
+  constructor(readonly target: string) {
+    super(
+      target
+        ? `API 서버(${target})에 연결할 수 없습니다. 서버가 실행 중인지, VITE_API_BASE_URL이 올바른지 확인해 주세요.`
+        : 'API 서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해 주세요.'
+    )
+    this.name = 'ApiUnreachableError'
+  }
+}
+
 interface FetchOptions {
   /** 호출부가 넘기는 취소 신호 (지역을 다시 고르거나 컴포넌트가 언마운트될 때). */
   signal?: AbortSignal
@@ -59,6 +78,11 @@ async function apiFetch<T>(path: string, { signal }: FetchOptions = {}): Promise
     if (err instanceof Error && err.name === 'AbortError') {
       // 호출부가 취소한 것과 타임아웃을 구분한다 — 전자는 화면에 에러를 띄우면 안 된다.
       throw signal?.aborted ? new RequestCancelledError() : new RequestTimeoutError()
+    }
+    // fetch는 서버 미기동·주소 오류·CORS 차단을 모두 TypeError로 던진다.
+    // 응답을 받아 상태 코드를 읽은 경우(위의 !res.ok)는 여기로 오지 않는다.
+    if (err instanceof TypeError) {
+      throw new ApiUnreachableError(API_BASE)
     }
     throw err
   } finally {

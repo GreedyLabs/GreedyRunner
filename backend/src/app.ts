@@ -33,6 +33,28 @@ function isAllowedOrigin(origin: string): boolean {
   return false
 }
 
+/**
+ * 거부된 origin 로깅.
+ *
+ * `Origin`은 외부가 정하는 값이라 그대로, 매번 기록하면 안 된다. 운영에서는 스캐너·봇이
+ * 임의 origin으로 긁을 때마다 줄이 쌓이고(설정 문제를 가리는 소음), 아주 긴 헤더 하나로
+ * 로그를 부풀릴 수도 있다. 같은 origin은 한 번만 남기고, 길이는 잘라서 기록한다.
+ *
+ * 처음 보는 origin을 한 번 남기는 것은 유지한다 — 프론트엔드를 새 호스트에 올렸을 때
+ * "왜 CORS에 막히는지"를 서버 로그만으로 알 수 있어야 하기 때문이다.
+ */
+const loggedRejectedOrigins = new Set<string>()
+const MAX_LOGGED_ORIGINS = 100
+
+function logRejectedOrigin(origin: string): void {
+  const key = origin.slice(0, 200)
+  if (loggedRejectedOrigins.has(key)) return
+  // 상한에 닿으면 더 기록하지 않는다 (Set이 무한히 커지는 것을 막는다).
+  if (loggedRejectedOrigins.size >= MAX_LOGGED_ORIGINS) return
+  loggedRejectedOrigins.add(key)
+  console.warn(`[cors] 허용되지 않은 origin: ${key}${origin.length > key.length ? '…(생략)' : ''}`)
+}
+
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -41,7 +63,7 @@ app.use(
         callback(null, true)
         return
       }
-      console.warn(`[cors] 허용되지 않은 origin: ${origin}`)
+      logRejectedOrigin(origin)
       callback(null, false)
     },
   })

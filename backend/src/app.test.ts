@@ -161,3 +161,51 @@ describe('swagger 문서 ↔ 실제 응답', () => {
     }
   })
 })
+
+describe('CORS', () => {
+  it('허용된 origin에는 Access-Control-Allow-Origin을 돌려준다', async () => {
+    const res = await request(app).get('/health').set('Origin', 'http://localhost:5173')
+    expect(res.headers['access-control-allow-origin']).toBe('http://localhost:5173')
+  })
+
+  it('사설망 IP도 허용한다 (모바일 실기기에서 개발 서버 접속)', async () => {
+    const res = await request(app).get('/health').set('Origin', 'http://192.168.0.12:5173')
+    expect(res.headers['access-control-allow-origin']).toBe('http://192.168.0.12:5173')
+  })
+
+  it('허용되지 않은 origin에는 헤더를 주지 않는다', async () => {
+    const res = await request(app).get('/health').set('Origin', 'https://not-allowed.example.com')
+    expect(res.headers['access-control-allow-origin']).toBeUndefined()
+    // 거부해도 요청 자체는 정상 처리된다 (예전에는 콜백에 Error를 넘겨 HTML 500이 나갔다)
+    expect(res.status).toBe(200)
+  })
+
+  // Origin은 외부가 정하는 값이라, 거부될 때마다 그대로 기록하면 운영에서 스캐너·봇이
+  // 로그를 채운다. 같은 origin은 한 번만 남긴다.
+  it('같은 origin의 반복 거부는 한 번만 로그에 남긴다', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {})
+    const origin = `https://repeat-${Date.now()}.example.com`
+
+    await request(app).get('/health').set('Origin', origin)
+    await request(app).get('/health').set('Origin', origin)
+    await request(app).get('/health').set('Origin', origin)
+
+    const corsWarnings = warn.mock.calls.filter((args) => String(args[0]).includes('[cors]'))
+    expect(corsWarnings).toHaveLength(1)
+    warn.mockRestore()
+  })
+
+  it('아주 긴 origin은 잘라서 기록한다', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {})
+    // Origin 헤더에 쓸 수 있는 문자로만 길게 만든다.
+    const origin = `https://long-${Date.now()}-${'a'.repeat(500)}.example.com`
+
+    await request(app).get('/health').set('Origin', origin)
+
+    const line = warn.mock.calls.map((args) => String(args[0])).find((m) => m.includes('[cors]'))
+    expect(line).toBeDefined()
+    expect(line!.length).toBeLessThan(300)
+    expect(line).toContain('생략')
+    warn.mockRestore()
+  })
+})
