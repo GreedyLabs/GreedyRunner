@@ -8,7 +8,7 @@ import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { getGearRecommendation } from '../../lib/getGearRecommendation'
 import { gearIconFor } from '../../lib/gearIcons'
 import { getConditionTip } from '../../lib/getConditionTip'
-import { bestHourRangeLabel, ampmHour, hourLabel } from '../../lib/hourFormat'
+import { bestHourRangeLabel, hourLabel } from '../../lib/hourFormat'
 import { TONE_CLASSES } from '../../lib/runningStatusColors'
 import type { Region } from '../../domain/entities/region.types'
 import type { AirQualityData } from '../../domain/entities/airQuality.types'
@@ -148,13 +148,17 @@ function TimelinePreview({ data }: { data: AirQualityData }) {
           return (
             <div key={`${p.hour}-${p.isNextDay ?? false}`} className="flex-1 flex flex-col items-center gap-1.5">
               <div className={`w-full rounded-[2px] ${color}`} style={{ height: `${height}px` }} />
-              {/* 24개를 모두 적으면 겹치므로 3시간 간격으로만 표시한다 (/hours와 같은 규칙) */}
+              {/*
+                24시간제로 적는다. 12시간제 숫자를 쓰면 24개가 늘어선 띠에서 "3"이 오전인지
+                오후인지 알 수 없다. /hours 차트도 같은 24시간제 숫자를 쓴다.
+                24개를 모두 적으면 겹치므로 3시간 간격 + 현재·추천 시각만 표시한다.
+              */}
               <span
-                className={`text-[9px] leading-none h-3 ${
+                className={`text-[9px] leading-none h-3 tabular-nums ${
                   isBest ? 'text-accent font-bold' : isNow ? 'text-ink font-bold' : 'text-faint'
                 }`}
               >
-                {isNow || isBest || p.hour % 3 === 0 ? ampmHour(p.hour).hour12 : ''}
+                {isNow || isBest || p.hour % 3 === 0 ? p.hour : ''}
               </span>
             </div>
           )
