@@ -195,9 +195,37 @@ describe('useAirQuality — 캐시', () => {
     expect(getAirQualityByRegion).toHaveBeenCalledTimes(1)
   })
 
-  // 상류가 하나라도 정상이 아니면 짧게만 캐싱해야 한다. 그러지 않으면 상류가 복구된
-  // 뒤에도 사용자는 5분 동안 빈 화면을 본다.
-  it('degraded 응답은 5분이 아니라 1분만 캐싱한다', async () => {
+  // KMA 키가 없거나 좌표를 보내지 않으면 weather는 항상 'unavailable'이다. 이것을
+  // degraded로 묶으면 그 구성에서 모든 응답이 1분만 캐싱되어 백엔드 호출이 5배로 늘어난다.
+  // 재시도해도 키는 생기지 않으므로 정상 TTL을 줘야 한다.
+  it("weather가 'unavailable'이면 60초가 지나도 캐시를 쓴다", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      const regionId = uniqueId('unavailable')
+      getAirQualityByRegion.mockResolvedValue(
+        data('키 없음 측정소', { serviceStatus: { airKorea: 'ok', weather: 'unavailable' } })
+      )
+
+      const first = render(<Probe regionId={regionId} />)
+      await waitFor(() => expect(screen.getByTestId('region').textContent).toBe('키 없음 측정소'))
+      expect(getAirQualityByRegion).toHaveBeenCalledTimes(1)
+      first.unmount()
+
+      // degraded TTL(1분)은 넘기고 정상 TTL(5분)에는 못 미치는 지점
+      await act(async () => {
+        vi.advanceTimersByTime(90_000)
+      })
+
+      render(<Probe regionId={regionId} />)
+      await waitFor(() => expect(screen.getByTestId('region').textContent).toBe('키 없음 측정소'))
+      expect(getAirQualityByRegion).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  // 상류가 실제로 실패한 경우(error·timeout)는 곧 복구될 수 있으므로 짧게 캐싱한다.
+  it('상류 장애(error) 응답은 5분이 아니라 1분만 캐싱한다', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     try {
       const regionId = uniqueId('degraded')

@@ -31,6 +31,7 @@ PORT=8000
 AIR_KOREA_API_KEY=your_key_here   # 필수 - 없으면 mock 데이터로 동작
 KMA_API_KEY=your_key_here          # 선택 - 없으면 대기질만으로 점수 계산
 CORS_ALLOWED_ORIGINS=              # 선택 - 쉼표로 구분. localhost·사설망·ngrok은 기본 허용
+TRUST_PROXY_HOPS=2                 # 선택 - 신뢰할 프록시 홉 수 (기본 2). 아래 설명 참고
 UMAMI_URL=http://umami:3000        # 선택 - 방문자 통계
 UMAMI_WEBSITE_ID=                  # 선택 - 비어 있으면 /stats/visitors가 0을 반환
 UMAMI_USERNAME=
@@ -43,6 +44,11 @@ UMAMI_PASSWORD=
   모든 호출이 `SERVICE_KEY_IS_NOT_REGISTERED`를 받는다(시간이 지나도 회복되지 않는다).
 - `KMA_API_KEY` - [기상청 API 허브](https://apihub.kma.go.kr/)에서 발급 (기상 데이터 포함 시).
   공공데이터포털 키와 다른 키다.
+- `TRUST_PROXY_HOPS` - 요청 제한이 사용자를 구분하는 근거(`req.ip`)를 정한다.
+  운영 체인은 클라이언트 → Cloudflare → nginx → 백엔드라 **2**가 맞다.
+  값이 낮으면 앞단 프록시 주소가 잡혀 그 뒤 사용자가 전부 한 버킷에 들어가고(정상 사용자가
+  막힌다), 높으면 클라이언트가 보낸 `X-Forwarded-For`까지 믿어 제한을 우회할 수 있다.
+  프록시 구성을 바꾸면 이 값도 함께 바꾼다.
 
 > 키가 없으면 백엔드가 기동 로그에 `[air-quality] AIR_KOREA_API_KEY 미설정 → Mock 데이터 사용`을
 > 남기고 mock 클라이언트로 동작한다. 그럴듯한 숫자가 나오므로 화면만으로는 구분되지 않는다 —

@@ -33,6 +33,20 @@ function readCache(key: string): AirQualityData | null {
   return hit.data
 }
 
+/**
+ * 백엔드 라우트 캐시(routes/airQuality.ts의 ttlFor)와 같은 규칙을 쓴다.
+ *
+ * 짧은 TTL은 곧 복구될 수 있는 실패에만 준다. weather의 'unavailable'은 KMA 키가 없거나
+ * 좌표를 보내지 않은 영구 상태이므로 짧게 캐싱해도 다시 시도할 이유가 없다 — 그렇게 하면
+ * 키 없이 운영하는 구성에서 백엔드 호출만 5배로 늘어난다.
+ * serviceStatus가 아예 없는 응답(구버전 캐시)은 판단할 근거가 없으므로 짧게 잡는다.
+ */
+function ttlFor(status: AirQualityData['serviceStatus']): number {
+  if (!status) return DEGRADED_TTL
+  const transient = status.airKorea !== 'ok' || status.weather === 'timeout' || status.weather === 'error'
+  return transient ? DEGRADED_TTL : CACHE_TTL
+}
+
 function writeCache(key: string, data: AirQualityData): void {
   if (cache.size >= CACHE_MAX_ENTRIES) {
     const now = Date.now()
@@ -43,10 +57,7 @@ function writeCache(key: string, data: AirQualityData): void {
       cache.delete(oldest.value)
     }
   }
-  // 대기질이든 날씨든 하나라도 정상이 아니면 짧게만 캐싱한다 (백엔드 라우트 캐시와 같은 규칙).
-  const status = data.serviceStatus
-  const degraded = !status || status.weather !== 'ok' || status.airKorea !== 'ok'
-  cache.set(key, { data, expiresAt: Date.now() + (degraded ? DEGRADED_TTL : CACHE_TTL) })
+  cache.set(key, { data, expiresAt: Date.now() + ttlFor(data.serviceStatus) })
 }
 
 interface UseAirQualityState {

@@ -32,11 +32,11 @@ export function rateLimit({ windowMs, max, message }: RateLimitOptions) {
   const buckets = new Map<string, Bucket>()
 
   return function rateLimitMiddleware(req: Request, res: Response, next: NextFunction): void {
-    // app에 trust proxy를 설정하지 않았으므로 req.ip는 프록시의 주소가 된다.
-    // nginx가 넘기는 X-Forwarded-For의 **첫** 항목을 클라이언트로 본다.
-    const forwarded = req.headers['x-forwarded-for']
-    const raw = Array.isArray(forwarded) ? forwarded[0] : forwarded
-    const key = (raw?.split(',')[0] ?? '').trim() || req.ip || 'unknown'
+    // 클라이언트 식별은 Express의 req.ip만 쓴다. X-Forwarded-For를 여기서 직접 읽으면
+    // 안 된다 — 그 헤더는 클라이언트가 정하는 값이라, 매 요청 다른 값을 보내면 매번 새
+    // 버킷이 생겨 제한이 전혀 걸리지 않는다. 어디까지 믿을지는 app.ts의 trust proxy가
+    // 정하고, Express가 신뢰 범위 밖의 값을 걸러 req.ip에 담아 준다.
+    const key = req.ip || 'unknown'
 
     const now = Date.now()
     let bucket = buckets.get(key)

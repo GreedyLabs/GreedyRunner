@@ -13,12 +13,18 @@ interface FakeRes {
 
 function callMiddleware(
   middleware: ReturnType<typeof rateLimit>,
-  ip: string
+  ip: string,
+  /** 위조된 X-Forwarded-For. 미들웨어는 이것을 읽지 않아야 한다. */
+  spoofedForwardedFor?: string
 ): { res: FakeRes; nextCalled: boolean } {
   const res: FakeRes = { statusCode: null, body: null, headers: {} }
   let nextCalled = false
 
-  const fakeReq = { headers: { 'x-forwarded-for': ip }, ip: '127.0.0.1' } as unknown as Request
+  // Express가 trust proxy 설정에 따라 채워 주는 값이 req.ip다. 미들웨어는 이것만 본다.
+  const fakeReq = {
+    headers: spoofedForwardedFor ? { 'x-forwarded-for': spoofedForwardedFor } : {},
+    ip,
+  } as unknown as Request
   const fakeRes = {
     setHeader: (k: string, v: string) => {
       res.headers[k] = v
@@ -70,14 +76,24 @@ describe('rateLimit', () => {
     expect(callMiddleware(mw, '3.3.3.3').nextCalled).toBe(false)
   })
 
-  // nginx 뒤에 있으므로 req.ip는 프록시 주소다. X-Forwarded-For의 첫 항목을 써야
-  // 사용자별로 구분된다 — 그러지 않으면 전체 트래픽이 한 버킷에 들어가 정상 사용자도 막힌다.
-  it('X-Forwarded-For의 첫 항목을 클라이언트로 본다', () => {
+  // X-Forwarded-For는 클라이언트가 정하는 값이다. 미들웨어가 그 헤더를 직접 읽으면
+  // 매 요청 다른 값을 보내는 것만으로 매번 새 버킷이 생겨 제한이 전혀 걸리지 않는다
+  // — 하루 호출 한도를 지키려고 넣은 장치가 바로 그 위협에 무력해진다.
+  // 어디까지 믿을지는 app.ts의 trust proxy가 정하고, 미들웨어는 req.ip만 본다.
+  it('X-Forwarded-For를 읽지 않는다 (위조로 버킷을 늘릴 수 없다)', () => {
+    const mw = rateLimit({ windowMs: 60_000, max: 2, message: 'too many' })
+
+    expect(callMiddleware(mw, '5.5.5.5', 'spoof-1').nextCalled).toBe(true)
+    expect(callMiddleware(mw, '5.5.5.5', 'spoof-2').nextCalled).toBe(true)
+    // 헤더를 매번 바꿔도 같은 req.ip이므로 세 번째는 막혀야 한다
+    expect(callMiddleware(mw, '5.5.5.5', 'spoof-3').nextCalled).toBe(false)
+    expect(callMiddleware(mw, '5.5.5.5', 'spoof-4').nextCalled).toBe(false)
+  })
+
+  it('req.ip가 없으면 하나의 버킷으로 묶는다 (제한을 건너뛰지 않는다)', () => {
     const mw = rateLimit({ windowMs: 60_000, max: 1, message: 'too many' })
-    expect(callMiddleware(mw, '5.5.5.5, 10.0.0.1, 10.0.0.2').nextCalled).toBe(true)
-    expect(callMiddleware(mw, '5.5.5.5, 10.0.0.9').nextCalled).toBe(false)
-    // 첫 항목이 다르면 다른 사용자다
-    expect(callMiddleware(mw, '6.6.6.6, 10.0.0.1').nextCalled).toBe(true)
+    expect(callMiddleware(mw, '').nextCalled).toBe(true)
+    expect(callMiddleware(mw, '').nextCalled).toBe(false)
   })
 
   it('창이 지나면 다시 통과시킨다', () => {

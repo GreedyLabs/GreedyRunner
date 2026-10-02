@@ -38,6 +38,23 @@ function coordKey(lat?: number, lng?: number): string {
   return `${lat.toFixed(2)}:${lng.toFixed(2)}`
 }
 
+/**
+ * 응답의 상류 상태로 캐시 TTL을 고른다.
+ *
+ * 짧은 TTL은 **곧 복구될 수 있는** 실패에만 의미가 있다. 상류 장애(error)와 응답 지연
+ * (timeout)은 몇 분 뒤 다시 시도할 가치가 있으므로 1분만 캐싱한다.
+ *
+ * 반면 weather의 'unavailable'은 KMA_API_KEY가 없거나 좌표를 받지 못한 **영구 상태**다.
+ * README가 KMA 키를 선택으로 두고 있으므로 키 없이 운영하는 구성이 정상인데, 이것을
+ * degraded로 묶으면 그 구성에서는 모든 응답이 1분만 캐싱되어 에어코리아 호출이 5배로
+ * 늘어난다 — 호출 한도를 지키려던 캐시가 반대로 한도를 태운다. 재시도해도 키는 생기지
+ * 않으므로 정상 TTL을 준다.
+ */
+function ttlFor(status: AirQualityData['serviceStatus']): number {
+  const transient = status.airKorea !== 'ok' || status.weather === 'timeout' || status.weather === 'error'
+  return transient ? DEGRADED_CACHE_TTL : CACHE_TTL
+}
+
 function readCache(key: string): AirQualityData | null {
   const hit = cache.get(key)
   if (!hit) return null
@@ -63,11 +80,7 @@ function writeCache(key: string, data: AirQualityData): void {
     }
   }
 
-  // 상류가 하나라도 정상이 아니면 짧게만 캐싱한다.
-  // 예전에는 `serviceStatus.weather`만 봤기 때문에, 대기질이 통째로 실패한 응답이
-  // 5분 동안 그대로 재사용됐다 — 상류가 복구된 뒤에도 사용자는 계속 빈 화면을 봤다.
-  const degraded = data.serviceStatus.weather !== 'ok' || data.serviceStatus.airKorea !== 'ok'
-  cache.set(key, { data, expiresAt: Date.now() + (degraded ? DEGRADED_CACHE_TTL : CACHE_TTL) })
+  cache.set(key, { data, expiresAt: Date.now() + ttlFor(data.serviceStatus) })
 }
 
 /**

@@ -7,6 +7,30 @@ import { swaggerDocument } from './swagger'
 const app = express()
 
 /**
+ * 신뢰할 프록시 홉 수 — `req.ip`가 무엇이 될지를 정한다.
+ *
+ * 요청 제한이 사용자를 구분하는 유일한 근거가 `req.ip`이므로 이 값이 틀리면 두 방향으로
+ * 깨진다. 너무 낮으면 앞단 프록시의 주소가 잡혀 **그 뒤의 모든 사용자가 한 버킷**에
+ * 들어가고(정상 사용자가 막힘), 너무 높으면 클라이언트가 보낸 `X-Forwarded-For` 값까지
+ * 믿어 **매 요청 다른 값을 넣는 것만으로 제한을 우회**할 수 있다.
+ *
+ * 운영 체인은 클라이언트 → Cloudflare → nginx → 백엔드다. Cloudflare가 XFF에 클라이언트
+ * 주소를 넣고, nginx가 proxy_add_x_forwarded_for로 Cloudflare 엣지 주소를 덧붙인다.
+ * 소켓에서 가까운 순서로 [nginx, CF 엣지, 클라이언트]이므로 2개를 신뢰해야 클라이언트가 잡힌다.
+ *
+ * 실제로 확인한 값 (XFF "203.0.113.9, 198.51.100.7"):
+ *   hops=1 → req.ip 198.51.100.7 (CF 엣지)      — 같은 엣지 사용자가 전부 한 버킷
+ *   hops=2 → req.ip 203.0.113.9  (클라이언트)    — 왼쪽에 위조 값을 더해도 무시됨
+ *
+ * 프록시 구성을 바꾸면(예: Cloudflare를 걷어내면 1) TRUST_PROXY_HOPS로 맞춰야 한다.
+ *
+ * 신뢰 경계는 결국 "누가 백엔드 포트에 연결할 수 있는가"다. 백엔드를 프록시 없이 직접
+ * 노출하면 접속자 자신이 첫 홉이 되어 헤더를 위조할 수 있다 — 포트를 내부망에 두어야 한다.
+ */
+const TRUST_PROXY_HOPS = Number(process.env.TRUST_PROXY_HOPS ?? 2)
+app.set('trust proxy', Number.isFinite(TRUST_PROXY_HOPS) ? TRUST_PROXY_HOPS : 2)
+
+/**
  * 허용 origin.
  *
  * 운영에서는 nginx가 같은 origin으로 프록시하므로 CORS가 개입하지 않지만, 프론트엔드를
