@@ -145,9 +145,15 @@ function TimelinePreview({ data }: { data: AirQualityData }) {
               : isNow
                 ? 'bg-ink'
                 : 'bg-bar'
+          // 추천 막대만 은은하게 깜빡여 눈에 먼저 들어오게 한다.
+          // 러닝 지수 카드의 "실시간" 점과 같은 모션(animate-pulse)을 재사용해 앱 안에서
+          // 깜빡임의 의미를 하나로 맞춘다.
+          // motion-reduce: 움직임 최소화를 켠 사용자에게는 끈다 — 상시 반복되는 장식
+          // 애니메이션이므로 WCAG 2.2.2 대상이다.
+          const pulse = isBest ? ' animate-pulse motion-reduce:animate-none' : ''
           return (
             <div key={`${p.hour}-${p.isNextDay ?? false}`} className="flex-1 flex flex-col items-center gap-1.5">
-              <div className={`w-full rounded-[2px] ${color}`} style={{ height: `${height}px` }} />
+              <div className={`w-full rounded-[2px] ${color}${pulse}`} style={{ height: `${height}px` }} />
               {/*
                 24시간제로 적는다. 12시간제 숫자를 쓰면 24개가 늘어선 띠에서 "3"이 오전인지
                 오후인지 알 수 없다. /hours 차트도 같은 24시간제 숫자를 쓴다.

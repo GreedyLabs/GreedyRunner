@@ -43,7 +43,7 @@ export function RunningIndexCard({ runningIndex, updatedAt }: RunningIndexCardPr
           러닝 지수 · {hourLabel(updatedAt)}
         </span>
         <span className="flex items-center gap-1.5 text-[11px] text-muted">
-          <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+          <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse motion-reduce:animate-none" />
           실시간
         </span>
       </div>
