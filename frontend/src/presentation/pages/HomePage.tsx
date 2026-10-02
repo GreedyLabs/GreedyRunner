@@ -8,7 +8,7 @@ import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { getGearRecommendation } from '../../lib/getGearRecommendation'
 import { gearIconFor } from '../../lib/gearIcons'
 import { getConditionTip } from '../../lib/getConditionTip'
-import { bestHourRangeLabel, ampmHour } from '../../lib/hourFormat'
+import { bestHourRangeLabel, ampmHour, hourLabel } from '../../lib/hourFormat'
 import { TONE_CLASSES } from '../../lib/runningStatusColors'
 import type { Region } from '../../domain/entities/region.types'
 import type { AirQualityData } from '../../domain/entities/airQuality.types'
@@ -109,13 +109,15 @@ function ServiceNotice({ title, body }: { title: string; body: string }) {
 }
 
 function TimelinePreview({ data }: { data: AirQualityData }) {
-  // hourlyForecast[0]이 "지금"이다 (실·mock 공통 계약). 예전에는 브라우저 시계로 현재
-  // 시각을 찾아 회전시켰는데, 기준 시각이 에어코리아 dataTime이라 보통 index 1에 맞아
-  // 미리보기가 "지금" 바를 빼고 한 시간 뒤부터 시작했다.
-  const preview = data.hourlyForecast.slice(0, 7)
-  // bestRunningHours는 점수 내림차순이므로 앞의 2개가 실제 상위 2개다.
+  // 24시간 전체를 보여 준다. 예전에는 앞 7시간만 잘라 보여 줬는데, 좋은 시간대는 보통
+  // 늦은 오후라 헤드라인이 가리키는 시각("오후 4시 추천")이 차트 밖에 있었다.
+  // 추천 막대를 강조하는 코드도 사실상 항상 빈손이었다.
+  // (탭해서 시간을 고르는 상호작용은 /hours가 담당하므로 여기서는 읽기 전용으로 둔다)
+  //
+  // hourlyForecast[0]이 "지금"이다 (실·mock 공통 계약).
+  const forecast = data.hourlyForecast
   // hour만 비교하면 내일 6시가 오늘 6시 막대를 강조하므로 isNextDay까지 함께 본다.
-  const topKeys = new Set(data.bestRunningHours.slice(0, 2).map((h) => `${h.hour}-${h.isNextDay}`))
+  const bestKeys = new Set(data.bestRunningHours.map((h) => `${h.hour}-${h.isNextDay}`))
 
   return (
     <Link
@@ -128,23 +130,45 @@ function TimelinePreview({ data }: { data: AirQualityData }) {
           {bestHourRangeLabel(data.bestRunningHours)} <ChevronRight className="w-3.5 h-3.5" />
         </span>
       </div>
-      <div className="flex items-end gap-1.5 h-14">
-        {preview.map((p) => {
-          const active = topKeys.has(`${p.hour}-${!!p.isNextDay}`);
-          const height = Math.max(16, Math.round((p.runningIndex.score / 100) * 56))
+      {/* 막대가 24개라 간격을 좁힌다. 좁은 화면에서도 가로 스크롤 없이 한 화면에 들어간다. */}
+      <div className="flex items-end gap-[2px] h-14" aria-hidden="true">
+        {forecast.map((p, i) => {
+          const isBest = bestKeys.has(`${p.hour}-${!!p.isNextDay}`)
+          const isNow = i === 0
+          // 'unknown'은 점수 0으로 내려오지만 "최악"이 아니라 "측정 불가"다.
+          const isUnknown = p.runningIndex.status === 'unknown'
+          const height = isUnknown ? 6 : Math.max(6, Math.round((p.runningIndex.score / 100) * 56))
+          const color = isUnknown
+            ? 'bg-bar opacity-50'
+            : isBest
+              ? TONE_CLASSES.accent.bar
+              : isNow
+                ? 'bg-ink'
+                : 'bg-bar'
           return (
             <div key={`${p.hour}-${p.isNextDay ?? false}`} className="flex-1 flex flex-col items-center gap-1.5">
-              <div
-                className={`w-full rounded-[5px] ${active ? TONE_CLASSES.accent.bar : 'bg-bar'}`}
-                style={{ height: `${height}px` }}
-              />
-              <span className={`text-[9px] ${active ? 'text-accent font-bold' : 'text-faint'}`}>
-                {ampmHour(p.hour).hour12}
+              <div className={`w-full rounded-[2px] ${color}`} style={{ height: `${height}px` }} />
+              {/* 24개를 모두 적으면 겹치므로 3시간 간격으로만 표시한다 (/hours와 같은 규칙) */}
+              <span
+                className={`text-[9px] leading-none h-3 ${
+                  isBest ? 'text-accent font-bold' : isNow ? 'text-ink font-bold' : 'text-faint'
+                }`}
+              >
+                {isNow || isBest || p.hour % 3 === 0 ? ampmHour(p.hour).hour12 : ''}
               </span>
             </div>
           )
         })}
       </div>
+      {/* 색이 무엇을 뜻하는지 알려 준다. 막대 자체는 aria-hidden이므로 이 문장이
+          스크린리더에 전달되는 유일한 요약이다. */}
+      <p className="mt-3 text-[11px] text-muted">
+        {`지금부터 24시간 · ${
+          data.bestRunningHours.length > 0
+            ? `추천 ${data.bestRunningHours.map((b) => hourLabel(b.hour, b.isNextDay)).join(', ')}`
+            : '추천할 만한 시간대가 없어요'
+        }`}
+      </p>
     </Link>
   )
 }
