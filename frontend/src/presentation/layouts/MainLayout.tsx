@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { Activity, BarChart3, Backpack, Lightbulb, MapPin, Moon, Sun } from 'lucide-react';
-import { usePWAInstall } from '../../hooks/usePWAInstall';
+import { usePWAInstall } from '../../application/hooks/usePWAInstall';
 import { useTheme } from '../../application/hooks/useTheme';
 import { PWAInstallBanner } from '../components/shared/PWAInstallBanner';
+import { getVisitorStats } from '../../infrastructure/api/airQualityApi';
 import { cn } from '../../lib/cn';
 
 interface MainLayoutProps {
@@ -40,10 +41,18 @@ export function MainLayout({ children, regionName }: MainLayoutProps) {
   const isBannerVisible = showBanner || forceShowBanner;
 
   useEffect(() => {
-    fetch('/api/v1/stats/visitors')
-      .then((res) => res.json())
-      .then((data: VisitorStats) => setStats(data))
+    // 방문자 수만 API_BASE를 무시한 하드코딩 경로로 호출하고 있었다. 프론트엔드를
+    // 별도 호스트에 올리면(VITE_API_BASE_URL 사용) 이 호출만 조용히 404가 된다.
+    // 실패해도 화면에는 영향이 없어야 하므로 에러는 그대로 무시한다.
+    let cancelled = false;
+    getVisitorStats()
+      .then((data) => {
+        if (!cancelled) setStats(data);
+      })
       .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (

@@ -6,10 +6,28 @@ interface RunningIndexCardProps {
   updatedAt: Date;
 }
 
+/**
+ * 기준 시각 라벨 — 항상 KST로 표시한다.
+ *
+ * `updatedAt`은 백엔드가 에어코리아 dataTime(KST)에 고정한 값인데, `getHours()`는 단말
+ * 타임존으로 렌더한다. 해외에서 접속하면 카드가 실제 측정 시각과 다른 시각을 주장했다.
+ * 국내 대기질 서비스이므로 표시 기준은 KST로 못 박는다.
+ */
 function hourLabel(date: Date): string {
-  const hour = date.getHours();
-  const period = hour < 12 ? '오전' : '오후';
-  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+  // formatToParts로 시(hour) 부분만 꺼낸다.
+  // format()의 문자열을 Number()에 넣으면 안 된다 — 'ko-KR'은 "14시"처럼 접미사를 붙이므로
+  // Number("14시")가 NaN이 되어 "오후 NaN시"가 표시된다.
+  const hourPart = new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric',
+    hour12: false,
+    timeZone: 'Asia/Seoul',
+  })
+    .formatToParts(date)
+    .find((part) => part.type === 'hour')?.value;
+  // hour12:false는 자정을 '24'로 내는 구현이 있어 24를 0으로 정규화한다.
+  const kstHour = (Number(hourPart ?? '0') || 0) % 24;
+  const period = kstHour < 12 ? '오전' : '오후';
+  const hour12 = kstHour % 12 === 0 ? 12 : kstHour % 12;
   return `${period} ${hour12}시`;
 }
 
@@ -25,7 +43,7 @@ export function RunningIndexCard({ runningIndex, updatedAt }: RunningIndexCardPr
           러닝 지수 · {hourLabel(updatedAt)}
         </span>
         <span className="flex items-center gap-1.5 text-[11px] text-muted">
-          <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+          <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse motion-reduce:animate-none" />
           실시간
         </span>
       </div>

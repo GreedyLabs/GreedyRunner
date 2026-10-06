@@ -25,9 +25,18 @@
   --panel: #f5f5f2;
   --line: #eaeae4;
   --ink: #191917;
-  --muted: #87877e;
-  --faint: #b6b6ad;
+  /* --muted / --faint는 본문·라벨에 쓰이므로 WCAG 2.1 AA 본문 기준(4.5:1)을 넘어야 한다.
+     이전 값(#87877e / #b6b6ad)은 흰 배경에서 3.62:1 / 2.04:1, --panel 위에서는
+     3.32:1 / 1.87:1로 미달이었다. 하단 탭바 비활성 라벨, 시간대 차트의 시각 라벨,
+     본문 설명 문구가 전부 여기에 해당한다.
+     아래 값은 --paper(#ffffff)와 --panel(#f5f5f2) 양쪽에서 4.5:1을 넘는다. */
+  --muted: #5f5f57;  /* paper 6.44:1 · panel 5.90:1 */
+  --faint: #6e6e64;  /* paper 5.15:1 · panel 4.72:1 */
   --accent: #0f9d6b;
+  /* accent 표면에 흰 글자를 올리면 3.47:1로 미달이다. 흰 글자를 얹는 표면은
+     --accent가 아니라 --accent-strong을, 글자색은 --on-accent를 쓴다. */
+  --accent-strong: #0b7d55;
+  --on-accent: #ffffff;
   --accent-soft: #e4f4ec;
   --warn: #c77d2e;
   --warn-soft: #f6ecdc;
@@ -41,9 +50,13 @@
   --panel: #1e2026;
   --line: #2a2c32;
   --ink: #f1f1ef;
-  --muted: #9a9ba2;
-  --faint: #5c5e67;
+  --muted: #9a9ba2;  /* paper 6.47:1 · panel 6.17:1 */
+  --faint: #868790;  /* 이전 #5c5e67은 2.77:1 / 2.52:1로 미달. 지금 paper 5.02:1 · panel 4.56:1 */
   --accent: #2dd4a0;
+  /* 다크 모드의 accent는 밝으므로 흰 글자를 올리면 1.90:1이 된다.
+     표면은 그대로 쓰고 글자색을 어둡게 뒤집는다 (9.41:1). */
+  --accent-strong: #2dd4a0;
+  --on-accent: #16171b;
   --accent-soft: rgba(45, 212, 160, 0.14);
   --warn: #f0b45e;
   --warn-soft: rgba(240, 180, 94, 0.14);

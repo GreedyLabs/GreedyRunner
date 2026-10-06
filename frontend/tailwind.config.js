@@ -5,13 +5,11 @@ export default {
   theme: {
     extend: {
       colors: {
-        running: {
-          great: '#10b981',
-          good: '#3b82f6',
-          caution: '#f59e0b',
-          bad: '#f97316',
-          worst: '#ef4444',
-        },
+        // running.* 5색 스케일(great/good/caution/bad/worst)은 제거했다.
+        // runningStatusColors.ts가 "제거됨"이라고 선언한 팔레트인데 여기에 남아 있어,
+        // 색을 바꾸는 사람이 이 토큰과 미사용 Badge 컴포넌트를 빠뜨리게 만들었다.
+        // 상태 색은 STATUS_TONE → TONE_CLASSES(accent/warn/critical/muted) 한 경로만 쓴다.
+        //
         // Neutral+emerald surface tokens for the redesigned connected flow
         // (Home/Hours/Gear/Tip). Backed by CSS variables in index.css so
         // light/dark swap automatically without needing dark: on every usage.
@@ -22,6 +20,10 @@ export default {
         muted: 'var(--muted)',
         faint: 'var(--faint)',
         accent: 'var(--accent)',
+        // 흰(라이트)·검은(다크) 글자를 얹는 accent 표면 전용. bg-accent에 text-white를
+        // 올리면 라이트 3.47:1 / 다크 1.90:1로 AA 미달이다.
+        'accent-strong': 'var(--accent-strong)',
+        'on-accent': 'var(--on-accent)',
         'accent-soft': 'var(--accent-soft)',
         warn: 'var(--warn)',
         'warn-soft': 'var(--warn-soft)',

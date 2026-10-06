@@ -18,6 +18,15 @@ const STATUS_MESSAGES: Record<RunningStatus, string> = {
   unknown: '측정소 점검 등으로 대기질 데이터를 가져올 수 없습니다.',
 }
 
+/**
+ * 최적 시간 추천에 포함되는 최소 점수 — 'good'(달리기 좋음) 진입선과 같다.
+ *
+ * running-index-algorithm.md와 README가 모두 60점이라고 적고 있는데 코드는 65를 쓰고 있었다.
+ * 두 클라이언트(실·mock)에 각각 하드코딩돼 있어 한쪽만 고치면 로컬과 운영의 추천 기준이
+ * 갈리므로, 점수 → 상태 매핑을 소유한 이 모듈에서 한 번만 정의한다.
+ */
+export const BEST_HOUR_MIN_SCORE = 60
+
 const UNKNOWN_RUNNING_INDEX: RunningIndex = {
   score: 0,
   status: 'unknown',
@@ -29,9 +38,10 @@ const UNKNOWN_RUNNING_INDEX: RunningIndex = {
 /**
  * 대기질 + 기상 정보로 달리기 지수(0~100)를 계산합니다.
  *
- * 가중치 배분:
- *   대기질 70% — PM2.5(35%), PM10(20%), O₃(15%)
- *   기상   30% — 기온(15%), 습도(10%), 강수(5%)
+ * 가중치 배분 (running-index-algorithm.md의 표와 같아야 한다):
+ *   UV 있음: PM2.5 35% · PM10 20% · O₃ 15% · 기온 10% · 습도 5% · 풍속 5% · 강수 5% · UV 5%
+ *   UV 없음: PM2.5 35% · PM10 20% · O₃ 15% · 기온 12% · 습도 8% · 풍속 5% · 강수 5%
+ *   기상 없음: PM2.5 50% · PM10 30% · O₃ 20%
  *
  * weather가 없으면 대기질만으로 100점 만점 계산 (기존 호환)
  *
@@ -302,8 +312,12 @@ function uvPenalty(uv: number, hour?: number): number {
  * 게이트가 아니라 증폭 요소로만 쓴다(흐린 무더위·야간 고온다습도 습열 부담은 그대로이므로).
  *
  * 시원하면(20°C 미만) 습해도 열스트레스가 미미하므로 발동하지 않는다.
- *   기본 = (기온 - 20, 최대 15) × 습도 증폭(60→1.0 … 100%→2.5) × 1.8
- *   UV 추가(주간 UV≥6) = UV 등급(1~3) × 기온 초과분 × 1.2
+ *   기본 = (기온 - 20, 최대 15) × 습도 초과분(60%→0 … 100%→1) × 5.5
+ *   UV 추가(주간 UV≥6) = UV 등급(1~3) × 기온 초과분 × 3.0
+ *
+ * (이 계수는 아래 구현과 문서의 표를 그대로 옮긴 것이다. 예전 주석은 습도 증폭을
+ *  "60→1.0 … 100%→2.5", 계수를 1.8·1.2로 적어 두어 세 곳이 서로 달랐고, 특히
+ *  "습도 60% 이하에서 증폭 1.0"은 건조한 날 감점하지 않는다는 규칙 자체와 어긋났다.)
  */
 function heatHumidityForcePenalty(temp: number, humidity?: number, uvIndex?: number, hour?: number): number {
   if (temp < 20) return 0

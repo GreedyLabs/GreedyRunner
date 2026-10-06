@@ -15,6 +15,25 @@ permissions:
   packages: write
 
 jobs:
+  # 타입 검사·테스트·린트 게이트.
+  # 예전에는 이 단계가 없어, 타입 오류나 실패하는 테스트가 그대로 빌드·배포까지 갔다.
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Typecheck, test, lint
+        run: pnpm run verify
+
   resolve:
     runs-on: ubuntu-latest
     outputs:
@@ -47,7 +66,7 @@ jobs:
           fi
 
   build-frontend:
-    needs: resolve
+    needs: [verify, resolve]
     if: needs.resolve.outputs.frontend == 'true'
     uses: ./.github/workflows/_build-image.yml
     with:
@@ -60,7 +79,7 @@ jobs:
       BUILD_ENV: ${{ secrets.FRONTEND_ENV }}
 
   build-backend:
-    needs: resolve
+    needs: [verify, resolve]
     if: needs.resolve.outputs.backend == 'true'
     uses: ./.github/workflows/_build-image.yml
     with:
@@ -69,14 +88,17 @@ jobs:
       image: ${{ github.repository_owner }}/greedyrunner-be
       version: ${{ github.run_number }}
       no_cache: ${{ inputs.no_cache || false }}
-    secrets:
-      BUILD_ENV: ${{ secrets.BACKEND_BUILD_ENV }}
+    # BUILD_ENV를 넘기지 않는다. backend/Dockerfile은 build_env 시크릿을 마운트하지 않고,
+    # 백엔드는 AIR_KOREA_API_KEY·KMA_API_KEY를 런타임 환경변수로 받는다(Dockhand가 주입).
+    # 예전에는 BACKEND_BUILD_ENV를 빌드 시크릿으로 넘겨 놓고 아무도 읽지 않아,
+    # "빌드에 키가 들어간다"는 잘못된 인상을 줬다.
 
   deploy:
-    needs: [resolve, build-frontend, build-backend]
+    needs: [verify, resolve, build-frontend, build-backend]
     if: |
       always() &&
       !cancelled() &&
+      needs.verify.result == 'success' &&
       needs.resolve.result == 'success' &&
       needs.build-frontend.result != 'failure' &&
       needs.build-backend.result != 'failure' &&

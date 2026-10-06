@@ -10,7 +10,7 @@
 - **24시간 타임라인** - 시간대별 러닝 적합도를 바 차트로 시각화, 시간대 클릭 시 상세 조회
 - **대기질 상세** - 4개 오염물질(PM2.5, PM10, O3, NO2)을 6단계로 분류하여 표시
 - **지역 검색 & GPS** - 주소 검색 또는 현재 위치 기반 자동 조회
-- **최적 시간 추천** - 점수 60점 이상 시간대 중 상위 3개를 자동 추천
+- **최적 시간 추천** - 점수 60점 이상 시간대 중 상위 3개를 점수 순으로 추천
 
 ## 기술 스택
 
@@ -30,10 +30,29 @@
 PORT=8000
 AIR_KOREA_API_KEY=your_key_here   # 필수 - 없으면 mock 데이터로 동작
 KMA_API_KEY=your_key_here          # 선택 - 없으면 대기질만으로 점수 계산
+CORS_ALLOWED_ORIGINS=              # 선택 - 쉼표로 구분. localhost·사설망·ngrok은 기본 허용
+TRUST_PROXY_HOPS=2                 # 선택 - 신뢰할 프록시 홉 수 (기본 2). 아래 설명 참고
+UMAMI_URL=http://umami:3000        # 선택 - 방문자 통계
+UMAMI_WEBSITE_ID=                  # 선택 - 비어 있으면 /stats/visitors가 0을 반환
+UMAMI_USERNAME=
+UMAMI_PASSWORD=
 ```
 
-- `AIR_KOREA_API_KEY` - [에어코리아 오픈 API](https://www.data.go.kr/)에서 발급
-- `KMA_API_KEY` - [기상청 오픈 API](https://www.data.go.kr/)에서 발급 (기상 데이터 포함 시)
+- `AIR_KOREA_API_KEY` - [공공데이터포털](https://www.data.go.kr/)에서 발급.
+  에어코리아 대기오염정보·측정소정보와 기상청 생활기상지수(자외선)에 **공용으로** 쓴다.
+  포털이 주는 두 값 중 **디코딩 키**를 넣어야 한다 — 인코딩 키를 넣으면 이중 인코딩되어
+  모든 호출이 `SERVICE_KEY_IS_NOT_REGISTERED`를 받는다(시간이 지나도 회복되지 않는다).
+- `KMA_API_KEY` - [기상청 API 허브](https://apihub.kma.go.kr/)에서 발급 (기상 데이터 포함 시).
+  공공데이터포털 키와 다른 키다.
+- `TRUST_PROXY_HOPS` - 요청 제한이 사용자를 구분하는 근거(`req.ip`)를 정한다.
+  운영 체인은 클라이언트 → Cloudflare → nginx → 백엔드라 **2**가 맞다.
+  값이 낮으면 앞단 프록시 주소가 잡혀 그 뒤 사용자가 전부 한 버킷에 들어가고(정상 사용자가
+  막힌다), 높으면 클라이언트가 보낸 `X-Forwarded-For`까지 믿어 제한을 우회할 수 있다.
+  프록시 구성을 바꾸면 이 값도 함께 바꾼다.
+
+> 키가 없으면 백엔드가 기동 로그에 `[air-quality] AIR_KOREA_API_KEY 미설정 → Mock 데이터 사용`을
+> 남기고 mock 클라이언트로 동작한다. 그럴듯한 숫자가 나오므로 화면만으로는 구분되지 않는다 —
+> 실제 데이터가 나오지 않으면 이 로그를 먼저 확인할 것.
 
 ### 설치 및 실행
 
@@ -48,6 +67,15 @@ cd backend
 pnpm install
 pnpm run dev        # http://localhost:8000
 ```
+
+### 검증
+
+```bash
+pnpm run verify     # 타입 검사 + 린트 + 테스트 (양쪽 패키지)
+```
+
+CI(`.github/workflows/deploy.yml`)도 같은 명령을 게이트로 씁니다 — 통과하지 않으면
+빌드·배포가 진행되지 않습니다.
 
 > API 키 없이도 mock 데이터로 전체 기능을 확인할 수 있습니다.
 
@@ -67,7 +95,8 @@ GreedyRunner/
 │       ├── domain/                    # 엔티티 & 유즈케이스
 │       ├── infrastructure/            # 외부 API 클라이언트
 │       └── schemas/                   # Zod 유효성 검사
-├── running-index-algorithm.md         # 러닝 지수 알고리즘 상세 문서
+├── running-index-algorithm.md         # 러닝 지수 알고리즘 상세 문서 (점수 계산의 기준 문서)
+├── backend/measuring-station-api.md   # 에어코리아 Open API 요청 규격
 └── CLAUDE.md                          # 개발 가이드라인
 ```
 
@@ -77,7 +106,8 @@ GreedyRunner/
 |--------|------|------|
 | GET | `/api/v1/air-quality/search?q=강남` | 지역 검색 |
 | GET | `/api/v1/air-quality/by-coords?lat=&lng=` | 좌표 기반 조회 |
-| GET | `/api/v1/air-quality/:regionId` | 지역별 대기질 + 러닝 지수 |
+| GET | `/api/v1/air-quality/:regionId?lat=&lng=` | 지역별 대기질 + 러닝 지수 (좌표를 주면 기상·자외선 포함) |
+| GET | `/api/v1/stats/visitors` | 방문자 수 (Umami 연동, 미설정 시 0) |
 | GET | `/health` | 헬스체크 |
 | GET | `/docs` | Swagger API 문서 |
 
@@ -87,14 +117,19 @@ GreedyRunner/
 점수 = 100 - (대기질 페널티 + 기상 페널티)
 ```
 
-| 가중치 배분 | 항목 | 비율 |
-|-------------|------|------|
-| 대기질 (70%) | PM2.5 | 35% |
-| | PM10 | 20% |
-| | 오존 | 15% |
-| 기상 (30%) | 기온 | 15% |
-| | 습도 | 10% |
-| | 강수 | 5% |
+| 가중치 배분 | 항목 | 자외선 있음 | 자외선 없음 |
+|-------------|------|------|------|
+| 대기질 (70%) | PM2.5 | 35% | 35% |
+| | PM10 | 20% | 20% |
+| | 오존 | 15% | 15% |
+| 기상 (30%) | 기온 | 10% | 12% |
+| | 습도 | 5% | 8% |
+| | 풍속 | 5% | 5% |
+| | 강수 | 5% | 5% |
+| | 자외선 | 5% | — |
+
+기상 데이터(`KMA_API_KEY`)가 없으면 대기질만으로 계산합니다 (PM2.5 50%, PM10 30%, 오존 20%).
+가중 합산 외에 복합 악화 보정, 강수·습열 강제 감점, 극단값 상한, 야간 감점이 함께 적용됩니다.
 
 | 점수 | 상태 | 의미 |
 |------|------|------|

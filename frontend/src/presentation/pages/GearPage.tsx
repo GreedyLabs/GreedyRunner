@@ -106,12 +106,12 @@ function GearDetail({
         </>
       )}
 
-      <Link to="/tip" className="w-full mt-5 flex items-center justify-between bg-accent rounded-2xl px-[18px] py-4">
-        <span className="flex items-center gap-2.5 text-white text-sm font-bold">
+      <Link to="/tip" className="w-full mt-5 flex items-center justify-between bg-accent-strong rounded-2xl px-[18px] py-4">
+        <span className="flex items-center gap-2.5 text-on-accent text-sm font-bold">
           <Lightbulb className="w-[18px] h-[18px]" />
           오늘 조건에 맞는 팁 보기
         </span>
-        <ArrowRight className="w-[18px] h-[18px] text-white" />
+        <ArrowRight className="w-[18px] h-[18px] text-on-accent" />
       </Link>
 
       <Link to="/outfit" className="block text-center text-xs text-muted mt-3 underline underline-offset-2">

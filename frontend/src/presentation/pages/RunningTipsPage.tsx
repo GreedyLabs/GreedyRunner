@@ -86,7 +86,7 @@ export function RunningTipsPage() {
             className={cn(
               'shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors',
               selectedCategory === cat
-                ? 'bg-accent text-white'
+                ? 'bg-accent-strong text-on-accent'
                 : 'bg-panel border border-line text-muted hover:text-ink',
             )}
           >

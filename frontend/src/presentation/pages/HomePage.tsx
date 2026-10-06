@@ -8,7 +8,7 @@ import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { getGearRecommendation } from '../../lib/getGearRecommendation'
 import { gearIconFor } from '../../lib/gearIcons'
 import { getConditionTip } from '../../lib/getConditionTip'
-import { bestHourRangeLabel, ampmHour } from '../../lib/hourFormat'
+import { bestHourRangeLabel, hourLabel } from '../../lib/hourFormat'
 import { TONE_CLASSES } from '../../lib/runningStatusColors'
 import type { Region } from '../../domain/entities/region.types'
 import type { AirQualityData } from '../../domain/entities/airQuality.types'
@@ -61,6 +61,17 @@ export function HomePage({
 
       {data && !isLoading && (
         <>
+          {/*
+            대기질 쪽 상태도 함께 알린다. 백엔드가 serviceStatus.airKorea를 'ok'로 고정하던
+            시절에는 이 값을 띄울 수 없었고, 그래서 에어코리아가 통째로 실패해도 화면에는
+            아무 경고 없이 '측정 불가' 숫자만 나왔다.
+          */}
+          {data.serviceStatus?.airKorea === 'timeout' && (
+            <ServiceNotice title="에어코리아 응답 지연" body="측정소 데이터를 가져오지 못했습니다. 잠시 후 다시 시도해 주세요." />
+          )}
+          {data.serviceStatus?.airKorea === 'error' && (
+            <ServiceNotice title="에어코리아 장애" body="측정소 데이터를 가져오지 못했습니다. 잠시 후 다시 시도해 주세요." />
+          )}
           {data.serviceStatus?.weather === 'timeout' && (
             <ServiceNotice title="기상청 API 허브 응답 지연" body="날씨 정보를 가져올 수 없어 대기질 기반으로만 달리기 지수를 계산했습니다." />
           )}
@@ -98,13 +109,15 @@ function ServiceNotice({ title, body }: { title: string; body: string }) {
 }
 
 function TimelinePreview({ data }: { data: AirQualityData }) {
-  // 실제 클라이언트는 hourlyForecast[0]이 "지금"이지만, mock 클라이언트는 0~23시 달력
-  // 순으로 채운다 — 인덱스에 의존하지 않고 현재 시각을 직접 찾아 그 시점부터 보여준다.
-  const nowHour = new Date().getHours()
-  const startIndex = data.hourlyForecast.findIndex((h) => h.hour === nowHour)
-  const from = startIndex === -1 ? 0 : startIndex
-  const preview = [...data.hourlyForecast.slice(from), ...data.hourlyForecast.slice(0, from)].slice(0, 7)
-  const topHours = new Set(data.bestRunningHours.slice(0, 2).map((h) => h.hour))
+  // 24시간 전체를 보여 준다. 예전에는 앞 7시간만 잘라 보여 줬는데, 좋은 시간대는 보통
+  // 늦은 오후라 헤드라인이 가리키는 시각("오후 4시 추천")이 차트 밖에 있었다.
+  // 추천 막대를 강조하는 코드도 사실상 항상 빈손이었다.
+  // (탭해서 시간을 고르는 상호작용은 /hours가 담당하므로 여기서는 읽기 전용으로 둔다)
+  //
+  // hourlyForecast[0]이 "지금"이다 (실·mock 공통 계약).
+  const forecast = data.hourlyForecast
+  // hour만 비교하면 내일 6시가 오늘 6시 막대를 강조하므로 isNextDay까지 함께 본다.
+  const bestKeys = new Set(data.bestRunningHours.map((h) => `${h.hour}-${h.isNextDay}`))
 
   return (
     <Link
@@ -117,23 +130,55 @@ function TimelinePreview({ data }: { data: AirQualityData }) {
           {bestHourRangeLabel(data.bestRunningHours)} <ChevronRight className="w-3.5 h-3.5" />
         </span>
       </div>
-      <div className="flex items-end gap-1.5 h-14">
-        {preview.map((p) => {
-          const active = topHours.has(p.hour);
-          const height = Math.max(16, Math.round((p.runningIndex.score / 100) * 56))
+      {/* 막대가 24개라 간격을 좁힌다. 좁은 화면에서도 가로 스크롤 없이 한 화면에 들어간다. */}
+      <div className="flex items-end gap-[2px] h-14" aria-hidden="true">
+        {forecast.map((p, i) => {
+          const isBest = bestKeys.has(`${p.hour}-${!!p.isNextDay}`)
+          const isNow = i === 0
+          // 'unknown'은 점수 0으로 내려오지만 "최악"이 아니라 "측정 불가"다.
+          const isUnknown = p.runningIndex.status === 'unknown'
+          const height = isUnknown ? 6 : Math.max(6, Math.round((p.runningIndex.score / 100) * 56))
+          const color = isUnknown
+            ? 'bg-bar opacity-50'
+            : isBest
+              ? TONE_CLASSES.accent.bar
+              : isNow
+                ? 'bg-ink'
+                : 'bg-bar'
+          // 추천 막대만 은은하게 깜빡여 눈에 먼저 들어오게 한다.
+          // 러닝 지수 카드의 "실시간" 점과 같은 모션(animate-pulse)을 재사용해 앱 안에서
+          // 깜빡임의 의미를 하나로 맞춘다.
+          // motion-reduce: 움직임 최소화를 켠 사용자에게는 끈다 — 상시 반복되는 장식
+          // 애니메이션이므로 WCAG 2.2.2 대상이다.
+          const pulse = isBest ? ' animate-pulse motion-reduce:animate-none' : ''
           return (
             <div key={`${p.hour}-${p.isNextDay ?? false}`} className="flex-1 flex flex-col items-center gap-1.5">
-              <div
-                className={`w-full rounded-[5px] ${active ? TONE_CLASSES.accent.bar : 'bg-bar'}`}
-                style={{ height: `${height}px` }}
-              />
-              <span className={`text-[9px] ${active ? 'text-accent font-bold' : 'text-faint'}`}>
-                {ampmHour(p.hour).hour12}
+              <div className={`w-full rounded-[2px] ${color}${pulse}`} style={{ height: `${height}px` }} />
+              {/*
+                24시간제로 적는다. 12시간제 숫자를 쓰면 24개가 늘어선 띠에서 "3"이 오전인지
+                오후인지 알 수 없다. /hours 차트도 같은 24시간제 숫자를 쓴다.
+                24개를 모두 적으면 겹치므로 3시간 간격 + 현재·추천 시각만 표시한다.
+              */}
+              <span
+                className={`text-[9px] leading-none h-3 tabular-nums ${
+                  isBest ? 'text-accent font-bold' : isNow ? 'text-ink font-bold' : 'text-faint'
+                }`}
+              >
+                {isNow || isBest || p.hour % 3 === 0 ? p.hour : ''}
               </span>
             </div>
           )
         })}
       </div>
+      {/* 색이 무엇을 뜻하는지 알려 준다. 막대 자체는 aria-hidden이므로 이 문장이
+          스크린리더에 전달되는 유일한 요약이다. */}
+      <p className="mt-3 text-[11px] text-muted">
+        {`지금부터 24시간 · ${
+          data.bestRunningHours.length > 0
+            ? `추천 ${data.bestRunningHours.map((b) => hourLabel(b.hour, b.isNextDay)).join(', ')}`
+            : '추천할 만한 시간대가 없어요'
+        }`}
+      </p>
     </Link>
   )
 }
